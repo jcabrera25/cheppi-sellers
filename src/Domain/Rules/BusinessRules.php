@@ -31,7 +31,8 @@ final class BusinessRules
         public readonly int $returnDays,
         public readonly array $payoutDays,
         public readonly Money $minimumPayout,
-        public readonly BrandPageService $brandPage
+        public readonly BrandPageService $brandPage,
+        public readonly bool $moderateNewProducts = true
     ) {
     }
 
@@ -51,6 +52,7 @@ final class BusinessRules
             'return_days' => 7,
             'payout_days' => [15, 31],
             'minimum_payout' => '20.00',
+            'moderate_products' => true,
             'brand_page' => [
                 'enabled' => true,
                 'design_fee' => '350.00',
@@ -180,7 +182,8 @@ final class BusinessRules
             $returnDays,
             $payoutDays,
             $minimumPayout,
-            $brandPage
+            $brandPage,
+            (bool) ($data['moderate_products'] ?? true)
         );
     }
 
@@ -197,6 +200,7 @@ final class BusinessRules
             'return_days' => $this->returnDays,
             'payout_days' => $this->payoutDays,
             'minimum_payout' => $this->minimumPayout->toDecimal(),
+            'moderate_products' => $this->moderateNewProducts,
             'brand_page' => $this->brandPage->toArray(),
         ];
     }

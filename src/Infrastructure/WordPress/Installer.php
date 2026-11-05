@@ -11,7 +11,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepositor
  */
 final class Installer
 {
-    public const DB_VERSION = '2';
+    public const DB_VERSION = '3';
     public const DB_VERSION_OPTION = 'cheppi_sellers_db_version';
     public const VENDOR_ROLE = 'cheppi_vendor';
 
@@ -80,6 +80,9 @@ final class Installer
   instagram varchar(60) NOT NULL DEFAULT '',
   website varchar(200) NOT NULL DEFAULT '',
   status_note text NULL,
+  logo_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  banner_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  about text NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   approved_at datetime DEFAULT NULL,

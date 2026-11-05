@@ -7,14 +7,22 @@ use Cheppi\Sellers\Application\CreateVendorByAdmin;
 use Cheppi\Sellers\Application\DeleteVendor;
 use Cheppi\Sellers\Application\ResubmitVendorDocuments;
 use Cheppi\Sellers\Application\ReviewVendor;
+use Cheppi\Sellers\Application\SaveVendorProduct;
 use Cheppi\Sellers\Application\SubmitVendorApplication;
 use Cheppi\Sellers\Application\UpdateVendorProfile;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\BusinessRulesPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\ProductModeration;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Catalog\ImageUploader;
+use Cheppi\Sellers\Infrastructure\WordPress\Catalog\VendorStats;
+use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Shortcodes;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\StoreController;
+use Cheppi\Sellers\Infrastructure\WordPress\Mail\ProductPublishedNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepository;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpDocumentStore;
@@ -80,8 +88,20 @@ final class Plugin
         Installer::maybeUpgrade();
         add_action('init', [Routes::class, 'register']);
 
-        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $this->assets);
+        $images = new ImageUploader();
+        $catalog = new WcProductCatalog($images);
+
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, new VendorStats(), $this->assets);
         $panel->register();
+        (new StoreController($this->vendors, $this->assets))->register();
+        (new ProductPublishedNotifier($this->vendors, $this->notifier))->register();
+
+        (new PanelHandler(
+            new SaveVendorProduct($this->vendors, $catalog, $this->rules),
+            $catalog,
+            $this->vendors,
+            $images
+        ))->register();
 
         (new ApplicationHandler(
             new SubmitVendorApplication($this->vendors, $this->documents, $this->rules, $this->notifier),
@@ -104,6 +124,7 @@ final class Plugin
                 new DeleteVendor($this->vendors, $this->documents, new WpVendorActivity()),
                 $this->assets
             ))->register();
+            (new ProductModeration($this->vendors))->register();
         }
 
         add_action('rest_api_init', function (): void {

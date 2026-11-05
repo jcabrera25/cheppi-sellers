@@ -1,0 +1,96 @@
+/* Cheppi UI kit — form controls and buttons (shared by every surface, including the public calculator). */
+
+/* The hidden attribute must win over component display rules. */
+[class*='ch-'][hidden] { display: none !important; }
+
+/* Buttons */
+.ch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ch-space-2);
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: var(--ch-radius-pill);
+  border: 1px solid transparent;
+  font: 700 0.95rem/1 var(--ch-font-body);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms var(--ch-ease), background-color 160ms var(--ch-ease), box-shadow 160ms var(--ch-ease);
+}
+
+.ch-btn:active { transform: scale(0.98); }
+.ch-btn:focus-visible { outline: none; box-shadow: var(--ch-focus); }
+.ch-btn[disabled], .ch-btn[aria-busy='true'] { opacity: 0.6; cursor: progress; }
+
+.ch-btn--primary { background: var(--ch-lime); color: var(--ch-night); }
+.ch-btn--primary:hover { background: #b8e81f; }
+.ch-btn--secondary { background: var(--ch-violet); color: #fff; }
+.ch-btn--secondary:hover { background: var(--ch-violet-700); }
+.ch-btn--ghost { background: transparent; color: var(--ch-text); border-color: var(--ch-border-strong); }
+.ch-btn--ghost:hover { background: var(--ch-lavender); }
+
+/* Form fields */
+.ch-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ch-field__label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ch-field__label small {
+  font-weight: 400;
+  color: var(--ch-text-3);
+}
+
+.ch-field__help {
+  font-size: 0.82rem;
+  color: var(--ch-text-2);
+}
+
+.ch-field__error {
+  font-size: 0.82rem;
+  color: var(--ch-danger);
+  font-weight: 500;
+}
+
+.ch-field__error:empty { display: none; }
+
+.ch-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--ch-border-strong);
+  border-radius: var(--ch-radius-sm);
+  background: var(--ch-surface);
+  color: var(--ch-text);
+  font: 400 1rem/1.4 var(--ch-font-body); /* 16px avoids iOS zoom on focus */
+  transition: border-color 160ms var(--ch-ease), box-shadow 160ms var(--ch-ease);
+}
+
+.ch-input:focus { outline: none; border-color: var(--ch-violet); box-shadow: var(--ch-focus); }
+.ch-input[aria-invalid='true'] { border-color: var(--ch-danger); }
+
+.ch-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.92rem;
+}
+
+.ch-check input {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--ch-violet);
+}
+
+.ch-muted { color: var(--ch-text-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-btn, .ch-input { transition: none; }
+}

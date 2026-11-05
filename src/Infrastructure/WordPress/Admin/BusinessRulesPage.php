@@ -59,7 +59,7 @@ final class BusinessRulesPage
         if ($hook !== $this->hook) {
             return; // nothing from the plugin loads on other screens
         }
-        $this->assets->enqueue('admin-rules');
+        $this->assets->enqueue('admin');
     }
 
     public function render(): void

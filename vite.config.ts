@@ -11,10 +11,10 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       input: {
-        'admin-rules': resolve(__dirname, 'assets/src/admin/rules.ts'),
-        'admin-vendors': resolve(__dirname, 'assets/src/admin/vendors.ts'),
+        admin: resolve(__dirname, 'assets/src/admin/admin.ts'),
         panel: resolve(__dirname, 'assets/src/panel/panel.ts'),
         calculator: resolve(__dirname, 'assets/src/front/calculator.ts'),
+        store: resolve(__dirname, 'assets/src/store/store.css'),
       },
       output: {
         entryFileNames: '[name].js',

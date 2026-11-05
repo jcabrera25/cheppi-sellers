@@ -1,4 +1,5 @@
 @import '../shared/tokens.css';
+@import '../shared/controls.css';
 @import '../shared/components.css';
 
 /* Cheppi screens inside wp-admin: same kit, scoped under .ch-admin. */
@@ -26,26 +27,6 @@
 .ch-admin .ch-grid--2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
 .ch-admin .ch-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ch-space-3); }
 
-.ch-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--ch-space-3); }
-
-.ch-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  border-radius: var(--ch-radius-pill);
-  background: var(--ch-surface);
-  border: 1px solid var(--ch-border);
-  color: var(--ch-text-2);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.ch-tab span { font-size: 0.75rem; color: var(--ch-text-3); }
-.ch-tab:hover { color: var(--ch-text); border-color: var(--ch-border-strong); }
-.ch-tab[aria-current='page'] { background: var(--ch-night); border-color: var(--ch-night); color: #fff; }
-.ch-tab[aria-current='page'] span { color: var(--ch-lime); }
-
 .ch-table-clean { width: 100%; border-collapse: collapse; }
 .ch-table-clean th { text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ch-text-3); padding: 0 12px 10px; }
 .ch-table-clean td { padding: 14px 12px; border-top: 1px solid var(--ch-border); vertical-align: top; }
@@ -60,7 +41,6 @@
 .ch-review__options { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
 .ch-review__options legend { margin-bottom: 8px; }
 
-.ch-btn--sm { min-height: 34px; padding: 0 14px; font-size: 0.85rem; }
 .ch-admin .ch-btn { text-decoration: none; }
 .ch-admin textarea.ch-input { min-height: 96px; resize: vertical; }
 
@@ -75,13 +55,6 @@
   .ch-table-clean td { border: 0; padding: 4px 8px; }
   .ch-table-clean td::before { content: attr(data-label); display: block; font-size: 0.72rem; color: var(--ch-text-3); }
 }
-
-/* Toolbar: status tabs + search */
-.ch-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ch-space-3); margin-bottom: var(--ch-space-3); }
-.ch-toolbar .ch-tabs { margin: 0; }
-.ch-search .ch-input { min-width: 280px; min-height: 40px; border-radius: var(--ch-radius-pill); }
-.ch-empty { display: flex; align-items: center; justify-content: space-between; gap: var(--ch-space-3); }
-.ch-empty p { margin: 0; }
 
 /* Forms inside cards */
 .ch-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--ch-space-3); }
@@ -102,10 +75,6 @@
 .ch-disclosure[open] > summary { background: var(--ch-lavender); }
 .ch-disclosure__body { margin-top: var(--ch-space-4); padding-top: var(--ch-space-4); border-top: 1px solid var(--ch-border); }
 
-/* Danger */
-.ch-btn--danger { background: var(--ch-danger); color: #fff; }
-.ch-btn--danger:hover { background: #8f1c13; }
-.ch-btn--danger[disabled] { opacity: 0.45; cursor: not-allowed; }
 .ch-danger { border-color: #f3c9c4; }
 .ch-danger .ch-card__title { color: var(--ch-danger); }
 
@@ -124,3 +93,12 @@
   .ch-sticky-card { position: static; }
   .ch-admin__head--row { flex-direction: column; }
 }
+
+/* Business rules screen */
+.ch-admin__form { display: grid; gap: var(--ch-space-4); }
+.ch-admin__errors { margin: 0 0 8px 18px; list-style: disc; }
+.ch-field--short .ch-input { max-width: 220px; }
+.ch-table-edit { margin: var(--ch-space-2) 0 var(--ch-space-3); }
+.ch-table-edit td { padding: 8px 6px; }
+.ch-table-edit .ch-input { min-height: 40px; }
+.ch-admin__actions { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(transparent, #f0f0f1 40%); }

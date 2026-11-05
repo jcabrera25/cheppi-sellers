@@ -29,7 +29,10 @@ final class Vendor
         public readonly string $statusNote,
         public readonly DateTimeImmutable $createdAt,
         public readonly DateTimeImmutable $updatedAt,
-        public readonly ?DateTimeImmutable $approvedAt = null
+        public readonly ?DateTimeImmutable $approvedAt = null,
+        public readonly int $logoId = 0,
+        public readonly int $bannerId = 0,
+        public readonly string $about = ''
     ) {
     }
 
@@ -105,6 +108,21 @@ final class Vendor
             'website' => $profile->website,
             'updatedAt' => $now,
         ]);
+    }
+
+    /** What the vendor edits in "Mi tienda": logo, banner (attachment ids) and a short presentation. */
+    public function withStorefront(int $logoId, int $bannerId, string $about, DateTimeImmutable $now): self
+    {
+        $about = trim($about);
+        if (mb_strlen($about) > 1000) {
+            throw new VendorValidationException(['about' => 'La presentación puede tener hasta 1000 caracteres.']);
+        }
+        return $this->with(['logoId' => max(0, $logoId), 'bannerId' => max(0, $bannerId), 'about' => $about, 'updatedAt' => $now]);
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->status === VendorStatus::Approved;
     }
 
     public function withId(int $id): self

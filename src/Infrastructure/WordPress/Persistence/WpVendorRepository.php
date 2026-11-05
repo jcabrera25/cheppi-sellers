@@ -15,6 +15,8 @@ use DateTimeZone;
  */
 final class WpVendorRepository implements VendorRepository
 {
+    private const COUNTS_CACHE = 'cheppi_vendor_counts';
+
     /** @var array<int, Vendor> request-level cache by user id */
     private array $byUser = [];
 
@@ -40,6 +42,9 @@ final class WpVendorRepository implements VendorRepository
             'created_at' => self::toDb($vendor->createdAt),
             'updated_at' => self::toDb($vendor->updatedAt),
             'approved_at' => $vendor->approvedAt ? self::toDb($vendor->approvedAt) : null,
+            'logo_id' => $vendor->logoId,
+            'banner_id' => $vendor->bannerId,
+            'about' => $vendor->about,
         ];
 
         if ($vendor->id === null) {
@@ -49,6 +54,7 @@ final class WpVendorRepository implements VendorRepository
             $wpdb->update($table, $row, ['id' => $vendor->id]);
         }
         // wpdb writes PHP null as SQL NULL (WordPress 4.4+), so no extra queries are needed.
+        delete_transient(self::COUNTS_CACHE);
         $this->byUser[$vendor->userId] = $vendor;
         return $vendor;
     }
@@ -77,6 +83,38 @@ final class WpVendorRepository implements VendorRepository
             $this->byUser[$userId] = $vendor;
         }
         return $vendor;
+    }
+
+    /**
+     * Loads several vendors in one query (admin product list) and keeps them in the request cache.
+     *
+     * @param list<int> $userIds
+     * @return array<int, Vendor> by user id
+     */
+    public function findByUserIds(array $userIds): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+        $missing = array_values(array_diff($userIds, array_keys($this->byUser)));
+        if ($missing !== []) {
+            global $wpdb;
+            $table = Installer::tables()['vendors'];
+            $placeholders = implode(',', array_fill(0, count($missing), '%d'));
+            $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE user_id IN ({$placeholders})", ...$missing), ARRAY_A);
+            foreach ((array) $rows as $row) {
+                $vendor = self::hydrate($row);
+                $this->byUser[$vendor->userId] = $vendor;
+            }
+        }
+        return array_intersect_key($this->byUser, array_flip($userIds));
+    }
+
+    /** Approved vendor by store address, for the public store page. */
+    public function findBySlug(string $slug): ?Vendor
+    {
+        global $wpdb;
+        $table = Installer::tables()['vendors'];
+        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE store_slug = %s", $slug), ARRAY_A);
+        return is_array($row) ? self::hydrate($row) : null;
     }
 
     public function slugExists(string $slug, ?int $exceptId = null): bool
@@ -132,19 +170,26 @@ final class WpVendorRepository implements VendorRepository
         global $wpdb;
         $vendor = $this->find($id);
         $wpdb->delete(Installer::tables()['vendors'], ['id' => $id], ['%d']);
+        delete_transient(self::COUNTS_CACHE);
         if ($vendor !== null) {
             unset($this->byUser[$vendor->userId]);
         }
     }
 
+    /** Cached: wp-admin asks for it on every screen (menu badge). Cleared on every save/delete. */
     public function countByStatus(): array
     {
+        $cached = get_transient(self::COUNTS_CACHE);
+        if (is_array($cached)) {
+            return $cached;
+        }
         global $wpdb;
         $table = Installer::tables()['vendors'];
         $counts = [];
         foreach ((array) $wpdb->get_results("SELECT status, COUNT(*) AS n FROM {$table} GROUP BY status", ARRAY_A) as $row) {
             $counts[(string) $row['status']] = (int) $row['n'];
         }
+        set_transient(self::COUNTS_CACHE, $counts, DAY_IN_SECONDS);
         return $counts;
     }
 
@@ -169,7 +214,10 @@ final class WpVendorRepository implements VendorRepository
             (string) ($row['status_note'] ?? ''),
             self::fromDb((string) $row['created_at']),
             self::fromDb((string) $row['updated_at']),
-            $row['approved_at'] ? self::fromDb((string) $row['approved_at']) : null
+            $row['approved_at'] ? self::fromDb((string) $row['approved_at']) : null,
+            (int) ($row['logo_id'] ?? 0),
+            (int) ($row['banner_id'] ?? 0),
+            (string) ($row['about'] ?? '')
         );
     }
 

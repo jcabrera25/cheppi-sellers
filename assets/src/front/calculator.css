@@ -1,5 +1,5 @@
 @import '../shared/tokens.css';
-@import '../shared/components.css';
+@import '../shared/controls.css';
 
 /* Scoped so the theme (Divi) is not affected. */
 .ch-calc {

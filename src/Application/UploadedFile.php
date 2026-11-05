@@ -30,6 +30,20 @@ final class UploadedFile
         }
     }
 
+    public const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
+    public const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+    /** @throws \Cheppi\Sellers\Domain\Catalog\ProductValidationException */
+    public function assertImage(string $field): void
+    {
+        if (!in_array($this->mime, self::IMAGE_MIME, true)) {
+            throw new \Cheppi\Sellers\Domain\Catalog\ProductValidationException([$field => 'Las fotos deben ser JPG, PNG o WebP.']);
+        }
+        if ($this->size <= 0 || $this->size > self::MAX_IMAGE_BYTES) {
+            throw new \Cheppi\Sellers\Domain\Catalog\ProductValidationException([$field => 'Cada foto debe pesar menos de 5 MB.']);
+        }
+    }
+
     public function extension(): string
     {
         return DocumentType::ALLOWED_MIME[$this->mime] ?? 'bin';

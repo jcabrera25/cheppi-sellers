@@ -103,7 +103,7 @@ final class VendorsPage
     public function enqueue(string $hook): void
     {
         if ($hook === $this->hook) {
-            $this->assets->enqueue('admin-vendors');
+            $this->assets->enqueue('admin');
         }
     }
 

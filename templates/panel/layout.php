@@ -6,6 +6,8 @@
  * @var string $view
  * @var string $content
  * @var bool $withShell
+ * @var ?string $nav
+ * @var ?\Cheppi\Sellers\Domain\Vendor\Vendor $vendor
  * @var WP_User $user
  * @var \Cheppi\Sellers\Infrastructure\WordPress\Assets $assets
  */
@@ -16,9 +18,9 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 
 defined('ABSPATH') || exit;
 
+$flash = $flash ?? [];
 $css = $assets->url('panel.css');
 $js = $assets->url('panel.js');
-$vendor = $vendor ?? null;
 ?><!doctype html>
 <html <?php language_attributes(); ?>>
 <head>
@@ -42,13 +44,27 @@ $vendor = $vendor ?? null;
                 <span class="ch-brand__word">cheppi</span><span class="ch-brand__tag">MARKET</span>
             </a>
             <nav class="ch-nav">
-                <a class="ch-nav__link" href="<?php echo esc_url(Routes::panelUrl()); ?>" aria-current="page"><?php echo Icons::svg('home'); ?><span><?php esc_html_e('Inicio', 'cheppi-sellers'); ?></span></a>
-                <a class="ch-nav__link" aria-disabled="true"><?php echo Icons::svg('box'); ?><span><?php esc_html_e('Productos', 'cheppi-sellers'); ?></span><em class="ch-nav__soon"><?php esc_html_e('Pronto', 'cheppi-sellers'); ?></em></a>
-                <a class="ch-nav__link" aria-disabled="true"><?php echo Icons::svg('receipt'); ?><span><?php esc_html_e('Pedidos', 'cheppi-sellers'); ?></span><em class="ch-nav__soon"><?php esc_html_e('Pronto', 'cheppi-sellers'); ?></em></a>
-                <a class="ch-nav__link" aria-disabled="true"><?php echo Icons::svg('wallet'); ?><span><?php esc_html_e('Pagos', 'cheppi-sellers'); ?></span><em class="ch-nav__soon"><?php esc_html_e('Pronto', 'cheppi-sellers'); ?></em></a>
-                <a class="ch-nav__link" aria-disabled="true"><?php echo Icons::svg('store'); ?><span><?php esc_html_e('Mi tienda', 'cheppi-sellers'); ?></span><em class="ch-nav__soon"><?php esc_html_e('Pronto', 'cheppi-sellers'); ?></em></a>
+                <?php
+                $open = $vendor !== null && $vendor->isPublic();
+                $items = [
+                    'inicio' => ['home', __('Inicio', 'cheppi-sellers'), Routes::panelUrl(), true],
+                    'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::productsUrl(), $open],
+                    'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), '', false],
+                    'pagos' => ['wallet', __('Pagos', 'cheppi-sellers'), '', false],
+                    'mi-tienda' => ['store', __('Mi tienda', 'cheppi-sellers'), Routes::storeSettingsUrl(), $open],
+                ];
+                foreach ($items as $key => [$icon, $label, $url, $enabled]) :
+                    if ($enabled) : ?>
+                        <a class="ch-nav__link" href="<?php echo esc_url($url); ?>" <?php echo $nav === $key ? 'aria-current="page"' : ''; ?>><?php echo Icons::svg($icon); ?><span><?php echo esc_html($label); ?></span></a>
+                    <?php else : ?>
+                        <span class="ch-nav__link" aria-disabled="true"><?php echo Icons::svg($icon); ?><span><?php echo esc_html($label); ?></span><em class="ch-nav__soon"><?php esc_html_e('Pronto', 'cheppi-sellers'); ?></em></span>
+                    <?php endif;
+                endforeach; ?>
             </nav>
             <div class="ch-sidebar__foot">
+                <?php if ($vendor !== null && $vendor->isPublic()) : ?>
+                    <a class="ch-nav__link" href="<?php echo esc_url(Routes::storeUrl($vendor->storeSlug)); ?>" target="_blank" rel="noopener"><?php echo Icons::svg('store'); ?><span><?php esc_html_e('Ver mi tienda', 'cheppi-sellers'); ?></span></a>
+                <?php endif; ?>
                 <a class="ch-nav__link" href="<?php echo esc_url('mailto:' . get_option('admin_email')); ?>"><?php echo Icons::svg('help'); ?><span><?php esc_html_e('Ayuda', 'cheppi-sellers'); ?></span></a>
                 <a class="ch-nav__link" href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>"><?php echo Icons::svg('logout'); ?><span><?php esc_html_e('Salir', 'cheppi-sellers'); ?></span></a>
             </div>
@@ -61,6 +77,11 @@ $vendor = $vendor ?? null;
                     <span class="ch-user__avatar" aria-hidden="true"><?php echo esc_html(PanelController::initials($user, $vendor)); ?></span>
                 </div>
             </header>
+            <?php if (!empty($flash['message'])) : ?>
+                <div class="ch-alert ch-alert--<?php echo ($flash['type'] ?? '') === 'success' ? 'success' : 'danger'; ?> ch-flash" role="status">
+                    <?php echo Icons::svg(($flash['type'] ?? '') === 'success' ? 'check' : 'alert'); ?><p><?php echo esc_html((string) $flash['message']); ?></p>
+                </div>
+            <?php endif; ?>
             <?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in its template ?>
         </main>
     </div>

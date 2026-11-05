@@ -1,5 +1,18 @@
 # Cambios
 
+## 0.4.0 — 2026-11-05
+
+Fase 2: panel y productos.
+
+- **Inicio con cifras reales**: productos por estado, stock bajo, ventas de los últimos 14 días y productos por categoría, con gráficos SVG generados en el servidor (sin librerías de gráficos).
+- **Productos desde el panel** (`/vendedor/productos/`): crear, editar, buscar, filtrar por estado y eliminar productos simples y variables (una opción como tono o tamaño, hasta 30 variantes con precio, oferta, stock y SKU propios). Hasta 8 fotos por producto, convertidas a WebP y limitadas a 1600 px. Borradores sin foto; para publicar se exige al menos una.
+- **Moderación** configurable en Reglas del negocio: los productos nuevos quedan «En revisión» hasta que Cheppi los apruebe. En WooCommerce → Productos hay columna «Vendedor» y acción «Aprobar y publicar»; el vendedor recibe un correo cuando su producto se publica.
+- **Límite de productos por plan** al crear (Emprende 50, Pro sin límite).
+- **Mi tienda** (`/vendedor/mi-tienda/`): logo, portada y presentación.
+- **Página pública de la tienda** `/tienda/<nombre>/` dentro del tema, con título, descripción y canonical propios; solo tiendas aprobadas (las demás dan 404).
+- **Rendimiento**: CSS separado en tokens/controles/componentes, admin en un solo bundle, conteos de vendedores en caché, consulta única de vendedores en el listado de productos del admin; la tienda pública carga solo 1,4 KB de CSS y ningún JS; el resto del sitio no carga nada del plugin.
+- Correcciones encontradas en pruebas: al aprobar un producto ahora recibe su URL (antes quedaba `/product/`); no se puede quitar la última foto de un producto publicado; los errores de foto y de datos se muestran juntos.
+
 ## 0.3.0 — 2026-11-05
 
 Gestión de vendedores desde el admin.

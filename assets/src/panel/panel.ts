@@ -2,9 +2,11 @@
  * Seller panel enhancements (no dependencies). Loaded as a deferred ES module on /vendedor pages only.
  * - File inputs show the chosen file.
  * - The registration form becomes a 4-step wizard with inline validation and a fetch() submit.
+ * - The product form gets option rows, a type switch and photo previews.
  */
 import './panel.css';
 import { isValidRuc } from './ruc';
+import { enhanceProductForm } from './product-form';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -191,3 +193,12 @@ function enhanceRegisterForm(form: HTMLFormElement): void {
 enhanceFileInputs(document);
 const registerForm = document.querySelector<HTMLFormElement>('[data-register-form]');
 if (registerForm) enhanceRegisterForm(registerForm);
+const productForm = document.querySelector<HTMLFormElement>('[data-product-form]');
+if (productForm) enhanceProductForm(productForm);
+
+// Forms that ask before running (delete product).
+document.querySelectorAll<HTMLFormElement>('form[data-confirm]').forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    if (!window.confirm(form.dataset.confirm ?? '¿Continuar?')) event.preventDefault();
+  });
+});

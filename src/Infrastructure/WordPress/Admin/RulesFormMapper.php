@@ -64,6 +64,7 @@ final class RulesFormMapper
             'return_days' => trim((string) ($post['return_days'] ?? '')),
             'payout_days' => array_values($days),
             'minimum_payout' => self::decimal($post['minimum_payout'] ?? ''),
+            'moderate_products' => !empty($post['moderate_products']),
             'brand_page' => [
                 'enabled' => !empty($brand['enabled']),
                 'design_fee' => self::decimal($brand['design_fee'] ?? ''),
@@ -98,6 +99,7 @@ final class RulesFormMapper
             'return_days' => (string) $rules->returnDays,
             'payout_days' => implode(', ', $rules->payoutDays),
             'minimum_payout' => $data['minimum_payout'],
+            'moderate_products' => $rules->moderateNewProducts,
             'brand_page' => $data['brand_page'],
         ];
     }

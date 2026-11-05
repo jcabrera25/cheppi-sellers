@@ -54,6 +54,17 @@ final class WpMailNotifier implements VendorNotifier
         );
     }
 
+    public function productPublished(Vendor $vendor, string $productName, string $url): void
+    {
+        $this->toVendor(
+            $vendor,
+            'Tu producto ya está publicado',
+            sprintf('Aprobamos <strong>%s</strong> y ya se muestra en Cheppi Market.', esc_html($productName)),
+            'Ver producto',
+            $url
+        );
+    }
+
     private function toVendor(Vendor $vendor, string $subject, string $body, string $cta, string $url): void
     {
         $user = get_userdata($vendor->userId);

@@ -4,35 +4,73 @@ declare(strict_types=1);
 namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
 
 /**
- * Pretty URLs for the seller panel: /vendedor/ and /vendedor/registro/.
+ * Pretty URLs:
+ *   /vendedor/                      panel home
+ *   /vendedor/registro/             registration
+ *   /vendedor/productos/            products list
+ *   /vendedor/productos/nuevo/      new product
+ *   /vendedor/productos/<id>/       edit product
+ *   /vendedor/mi-tienda/            storefront settings
+ *   /tienda/<slug>/                 public store page
  */
 final class Routes
 {
     public const QUERY_VAR = 'cheppi_panel';
+    public const ID_VAR = 'cheppi_id';
+    public const STORE_VAR = 'cheppi_store';
     public const BASE = 'vendedor';
+    public const STORE_BASE = 'tienda';
 
     public static function register(): void
     {
-        add_rewrite_rule('^' . self::BASE . '/?$', 'index.php?' . self::QUERY_VAR . '=inicio', 'top');
-        add_rewrite_rule('^' . self::BASE . '/registro/?$', 'index.php?' . self::QUERY_VAR . '=registro', 'top');
+        $panel = 'index.php?' . self::QUERY_VAR . '=';
+        add_rewrite_rule('^' . self::BASE . '/?$', $panel . 'inicio', 'top');
+        add_rewrite_rule('^' . self::BASE . '/registro/?$', $panel . 'registro', 'top');
+        add_rewrite_rule('^' . self::BASE . '/productos/?$', $panel . 'productos', 'top');
+        add_rewrite_rule('^' . self::BASE . '/productos/nuevo/?$', $panel . 'producto&' . self::ID_VAR . '=0', 'top');
+        add_rewrite_rule('^' . self::BASE . '/productos/([0-9]+)/?$', $panel . 'producto&' . self::ID_VAR . '=$matches[1]', 'top');
+        add_rewrite_rule('^' . self::BASE . '/mi-tienda/?$', $panel . 'mi-tienda', 'top');
+        add_rewrite_rule('^' . self::STORE_BASE . '/([a-z0-9-]+)/?$', 'index.php?' . self::STORE_VAR . '=$matches[1]', 'top');
+
         add_filter('query_vars', static function (array $vars): array {
-            $vars[] = self::QUERY_VAR;
+            array_push($vars, self::QUERY_VAR, self::ID_VAR, self::STORE_VAR);
             return $vars;
         });
 
+        // Kept as an autoloaded '0' instead of deleted: a missing option costs a query on every request.
         if (get_option('cheppi_sellers_flush_rewrites') === '1') {
             flush_rewrite_rules(false);
-            delete_option('cheppi_sellers_flush_rewrites');
+            update_option('cheppi_sellers_flush_rewrites', '0', true);
         }
     }
 
-    public static function panelUrl(): string
+    public static function panelUrl(string $path = ''): string
     {
-        return home_url('/' . self::BASE . '/');
+        return home_url('/' . self::BASE . '/' . ($path !== '' ? trailingslashit($path) : ''));
     }
 
     public static function registerUrl(): string
     {
-        return home_url('/' . self::BASE . '/registro/');
+        return self::panelUrl('registro');
+    }
+
+    public static function productsUrl(): string
+    {
+        return self::panelUrl('productos');
+    }
+
+    public static function productUrl(int $id = 0): string
+    {
+        return self::panelUrl($id > 0 ? 'productos/' . $id : 'productos/nuevo');
+    }
+
+    public static function storeSettingsUrl(): string
+    {
+        return self::panelUrl('mi-tienda');
+    }
+
+    public static function storeUrl(string $slug): string
+    {
+        return home_url('/' . self::STORE_BASE . '/' . $slug . '/');
     }
 }
