@@ -1,0 +1,25 @@
+{
+    "name": "cheppi/sellers",
+    "description": "Cheppi Sellers: marketplace multivendedor para WooCommerce, con núcleo de dominio reutilizable.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cheppi\\Sellers\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cheppi\\Sellers\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "php tests/run.php"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
