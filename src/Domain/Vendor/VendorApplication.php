@@ -31,6 +31,35 @@ final class VendorApplication
     public static function fromArray(array $input, array $documentsProvided, bool $termsAccepted): self
     {
         $errors = [];
+        foreach (DocumentType::required() as $type) {
+            if (!in_array($type, $documentsProvided, true)) {
+                $errors['doc_' . $type->value] = 'Falta subir: ' . $type->label() . '.';
+            }
+        }
+        if (!$termsAccepted) {
+            $errors['terms'] = 'Debes aceptar los términos para vendedores.';
+        }
+        return self::validate($input, $errors);
+    }
+
+    /**
+     * Business data only: used when an admin creates or edits a vendor (documents and terms are not required).
+     *
+     * @param array<string, mixed> $input
+     * @throws VendorValidationException
+     */
+    public static function profile(array $input): self
+    {
+        return self::validate($input, []);
+    }
+
+    /**
+     * @param array<string, mixed>  $input
+     * @param array<string, string> $errors errors already found by the caller
+     * @throws VendorValidationException
+     */
+    private static function validate(array $input, array $errors): self
+    {
         $text = static fn (string $key): string => trim((string) ($input[$key] ?? ''));
 
         $storeName = $text('store_name');
@@ -73,16 +102,6 @@ final class VendorApplication
         $website = $text('website');
         if ($website !== '' && filter_var($website, FILTER_VALIDATE_URL) === false) {
             $errors['website'] = 'La web debe empezar con https://';
-        }
-
-        foreach (DocumentType::required() as $type) {
-            if (!in_array($type, $documentsProvided, true)) {
-                $errors['doc_' . $type->value] = 'Falta subir: ' . $type->label() . '.';
-            }
-        }
-
-        if (!$termsAccepted) {
-            $errors['terms'] = 'Debes aceptar los términos para vendedores.';
         }
 
         if ($errors !== [] || $ruc === null) {

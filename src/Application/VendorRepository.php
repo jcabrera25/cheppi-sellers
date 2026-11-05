@@ -15,13 +15,20 @@ interface VendorRepository
 
     public function findByUserId(int $userId): ?Vendor;
 
-    public function slugExists(string $slug): bool;
+    /** @param int|null $exceptId ignore this vendor (when editing it) */
+    public function slugExists(string $slug, ?int $exceptId = null): bool;
 
-    public function rucExists(string $ruc): bool;
+    /** Active RUC (rejected vendors do not block it). */
+    public function rucExists(string $ruc, ?int $exceptId = null): bool;
 
-    /** @return list<Vendor> newest first */
-    public function list(?VendorStatus $status, int $limit, int $offset): array;
+    /**
+     * @param string $search matches store name, legal name or RUC
+     * @return list<Vendor> newest first
+     */
+    public function list(?VendorStatus $status, int $limit, int $offset, string $search = ''): array;
 
     /** @return array<string, int> status value => count */
     public function countByStatus(): array;
+
+    public function delete(int $id): void;
 }

@@ -80,6 +80,34 @@ final class WpDocumentStore implements DocumentStore
         return $out;
     }
 
+    public function delete(int $vendorId, DocumentType $type): void
+    {
+        global $wpdb;
+        $table = Installer::tables()['documents'];
+        $file = $wpdb->get_var($wpdb->prepare(
+            "SELECT file_name FROM {$table} WHERE vendor_id = %d AND type = %s",
+            $vendorId,
+            $type->value
+        ));
+        if (is_string($file) && $file !== '') {
+            wp_delete_file(PrivateUploads::dir() . '/' . $vendorId . '/' . basename($file));
+        }
+        $wpdb->delete($table, ['vendor_id' => $vendorId, 'type' => $type->value], ['%d', '%s']);
+    }
+
+    public function deleteAllFor(int $vendorId): void
+    {
+        global $wpdb;
+        foreach ($this->forVendor($vendorId) as $doc) {
+            $this->delete($vendorId, $doc['type']);
+        }
+        $dir = PrivateUploads::dir() . '/' . $vendorId;
+        if (is_dir($dir) && count((array) scandir($dir)) <= 2) {
+            @rmdir($dir);
+        }
+        $wpdb->delete(Installer::tables()['documents'], ['vendor_id' => $vendorId], ['%d']);
+    }
+
     /** Absolute path of a stored document, for the admin download handler. */
     public function pathFor(int $documentId): ?array
     {

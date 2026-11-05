@@ -2,7 +2,7 @@
 
 Marketplace multivendedor para Cheppi Market (WordPress + WooCommerce), escrito para convertirse más adelante en una plataforma propia sin reescribir la lógica.
 
-**Versión:** 0.2.0 — Fase 1 (vendedores)
+**Versión:** 0.3.0 — Fase 1 (vendedores + gestión desde el admin)
 
 ## Requisitos
 

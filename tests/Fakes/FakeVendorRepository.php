@@ -35,27 +35,27 @@ final class FakeVendorRepository implements VendorRepository
         return null;
     }
 
-    public function slugExists(string $slug): bool
+    public function slugExists(string $slug, ?int $exceptId = null): bool
     {
         foreach ($this->vendors as $v) {
-            if ($v->storeSlug === $slug) {
+            if ($v->storeSlug === $slug && $v->id !== $exceptId) {
                 return true;
             }
         }
         return false;
     }
 
-    public function rucExists(string $ruc): bool
+    public function rucExists(string $ruc, ?int $exceptId = null): bool
     {
         foreach ($this->vendors as $v) {
-            if ($v->ruc === $ruc) {
+            if ($v->ruc === $ruc && $v->id !== $exceptId) {
                 return true;
             }
         }
         return false;
     }
 
-    public function list(?VendorStatus $status, int $limit, int $offset): array
+    public function list(?VendorStatus $status, int $limit, int $offset, string $search = ''): array
     {
         return array_values($this->vendors);
     }
@@ -63,5 +63,10 @@ final class FakeVendorRepository implements VendorRepository
     public function countByStatus(): array
     {
         return [];
+    }
+
+    public function delete(int $id): void
+    {
+        unset($this->vendors[$id]);
     }
 }

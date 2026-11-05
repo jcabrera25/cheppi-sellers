@@ -8,6 +8,9 @@
  * @var \Cheppi\Sellers\Domain\Rules\BusinessRules $rules
  * @var int $paged
  * @var string $page
+ * @var string $search
+ * @var array<string, mixed> $flash
+ * @var string $newUrl
  */
 
 use Cheppi\Sellers\Domain\Vendor\StoreCategory;
@@ -30,10 +33,17 @@ foreach (VendorStatus::cases() as $case) {
 $current = $status?->value ?? '';
 ?>
 <div class="wrap ch-admin">
-    <header class="ch-admin__head">
-        <h1><?php esc_html_e('Vendedores', 'cheppi-sellers'); ?></h1>
-        <p class="ch-muted"><?php esc_html_e('Revisa las solicitudes, aprueba tiendas y ajusta plan o comisión.', 'cheppi-sellers'); ?></p>
+    <header class="ch-admin__head ch-admin__head--row">
+        <div>
+            <h1><?php esc_html_e('Vendedores y marcas', 'cheppi-sellers'); ?></h1>
+            <p class="ch-muted"><?php esc_html_e('Revisa solicitudes, añade marcas, edita sus datos y documentos, o elimínalas.', 'cheppi-sellers'); ?></p>
+        </div>
+        <a class="ch-btn ch-btn--primary" href="<?php echo esc_url($newUrl); ?>">+ <?php esc_html_e('Añadir vendedor', 'cheppi-sellers'); ?></a>
     </header>
+
+    <?php if (isset($flash['message'])) : ?>
+        <div class="notice notice-<?php echo ($flash['type'] ?? '') === 'success' ? 'success' : 'error'; ?> is-dismissible"><p><?php echo esc_html((string) $flash['message']); ?></p></div>
+    <?php endif; ?>
 
     <div class="ch-grid ch-grid--stats ch-admin__stats">
         <div class="ch-card ch-stat ch-stat--accent"><span class="ch-stat__label"><?php esc_html_e('Por revisar', 'cheppi-sellers'); ?></span><span class="ch-stat__value"><?php echo (int) ($counts['pending'] ?? 0); ?></span></div>
@@ -42,6 +52,7 @@ $current = $status?->value ?? '';
         <div class="ch-card ch-stat"><span class="ch-stat__label"><?php esc_html_e('Total', 'cheppi-sellers'); ?></span><span class="ch-stat__value"><?php echo (int) $total; ?></span></div>
     </div>
 
+    <div class="ch-toolbar">
     <nav class="ch-tabs" aria-label="<?php esc_attr_e('Filtrar por estado', 'cheppi-sellers'); ?>">
         <?php foreach ($tabs as $value => [$label, $count]) : ?>
             <a class="ch-tab" href="<?php echo esc_url(admin_url('admin.php?page=' . $page . ($value !== '' ? '&estado=' . $value : ''))); ?>" <?php echo $current === $value ? 'aria-current="page"' : ''; ?>>
@@ -49,10 +60,19 @@ $current = $status?->value ?? '';
             </a>
         <?php endforeach; ?>
     </nav>
+    <form method="get" class="ch-search" role="search">
+        <input type="hidden" name="page" value="<?php echo esc_attr($page); ?>">
+        <?php if ($current !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($current); ?>"><?php endif; ?>
+        <input class="ch-input" type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar tienda, razón social o RUC', 'cheppi-sellers'); ?>" aria-label="<?php esc_attr_e('Buscar vendedores', 'cheppi-sellers'); ?>">
+    </form>
+    </div>
 
     <div class="ch-card ch-admin__table-card">
         <?php if ($vendors === []) : ?>
-            <p class="ch-muted" style="margin:0"><?php esc_html_e('No hay vendedores en este estado.', 'cheppi-sellers'); ?></p>
+            <div class="ch-empty">
+                <p class="ch-muted"><?php echo $search !== '' ? esc_html(sprintf(__('No hay resultados para «%s».', 'cheppi-sellers'), $search)) : esc_html__('No hay vendedores en este estado.', 'cheppi-sellers'); ?></p>
+                <a class="ch-btn ch-btn--ghost" href="<?php echo esc_url($newUrl); ?>"><?php esc_html_e('Añadir vendedor', 'cheppi-sellers'); ?></a>
+            </div>
         <?php else : ?>
             <table class="ch-table-clean">
                 <thead>
@@ -83,7 +103,7 @@ $current = $status?->value ?? '';
             </table>
             <?php
             $shown = $current === '' ? $total : ($counts[$current] ?? 0);
-            if ($shown > 20) :
+            if ($search === '' && $shown > 20) :
                 echo '<div class="ch-pager">' . wp_kses_post((string) paginate_links([
                     'base' => add_query_arg('paged', '%#%'),
                     'format' => '',

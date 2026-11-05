@@ -90,6 +90,23 @@ final class Vendor
         return $this->with(['planId' => $planId, 'commissionOverrideBps' => $commissionOverrideBps, 'updatedAt' => $now]);
     }
 
+    /** Business data edited by an admin. Status, plan and history are untouched. */
+    public function withProfile(VendorApplication $profile, string $storeSlug, DateTimeImmutable $now): self
+    {
+        return $this->with([
+            'storeName' => $profile->storeName,
+            'storeSlug' => $storeSlug,
+            'ruc' => $profile->ruc->value,
+            'legalName' => $profile->legalName,
+            'phone' => $profile->phone,
+            'category' => $profile->category,
+            'district' => $profile->district,
+            'instagram' => $profile->instagram,
+            'website' => $profile->website,
+            'updatedAt' => $now,
+        ]);
+    }
+
     public function withId(int $id): self
     {
         return $this->with(['id' => $id]);

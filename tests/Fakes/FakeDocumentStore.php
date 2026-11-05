@@ -21,4 +21,14 @@ final class FakeDocumentStore implements DocumentStore
     {
         return [];
     }
+
+    public function delete(int $vendorId, DocumentType $type): void
+    {
+        unset($this->docs[$vendorId][$type->value]);
+    }
+
+    public function deleteAllFor(int $vendorId): void
+    {
+        unset($this->docs[$vendorId]);
+    }
 }

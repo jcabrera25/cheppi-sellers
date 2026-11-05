@@ -79,39 +79,62 @@ final class WpVendorRepository implements VendorRepository
         return $vendor;
     }
 
-    public function slugExists(string $slug): bool
-    {
-        global $wpdb;
-        $table = Installer::tables()['vendors'];
-        return (bool) $wpdb->get_var($wpdb->prepare("SELECT 1 FROM {$table} WHERE store_slug = %s LIMIT 1", $slug));
-    }
-
-    public function rucExists(string $ruc): bool
+    public function slugExists(string $slug, ?int $exceptId = null): bool
     {
         global $wpdb;
         $table = Installer::tables()['vendors'];
         return (bool) $wpdb->get_var($wpdb->prepare(
-            "SELECT 1 FROM {$table} WHERE ruc = %s AND status <> %s LIMIT 1",
-            $ruc,
-            VendorStatus::Rejected->value
+            "SELECT 1 FROM {$table} WHERE store_slug = %s AND id <> %d LIMIT 1",
+            $slug,
+            $exceptId ?? 0
         ));
     }
 
-    public function list(?VendorStatus $status, int $limit, int $offset): array
+    public function rucExists(string $ruc, ?int $exceptId = null): bool
     {
         global $wpdb;
         $table = Installer::tables()['vendors'];
-        if ($status === null) {
-            $sql = $wpdb->prepare("SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d", $limit, $offset);
-        } else {
-            $sql = $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
-                $status->value,
-                $limit,
-                $offset
-            );
+        return (bool) $wpdb->get_var($wpdb->prepare(
+            "SELECT 1 FROM {$table} WHERE ruc = %s AND status <> %s AND id <> %d LIMIT 1",
+            $ruc,
+            VendorStatus::Rejected->value,
+            $exceptId ?? 0
+        ));
+    }
+
+    public function list(?VendorStatus $status, int $limit, int $offset, string $search = ''): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['vendors'];
+        $where = ['1=1'];
+        $args = [];
+        if ($status !== null) {
+            $where[] = 'status = %s';
+            $args[] = $status->value;
         }
+        $search = trim($search);
+        if ($search !== '') {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(store_name LIKE %s OR legal_name LIKE %s OR ruc LIKE %s)';
+            array_push($args, $like, $like, $like);
+        }
+        $args[] = $limit;
+        $args[] = $offset;
+        $sql = $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE " . implode(' AND ', $where) . ' ORDER BY created_at DESC LIMIT %d OFFSET %d',
+            ...$args
+        );
         return array_map([self::class, 'hydrate'], (array) $wpdb->get_results($sql, ARRAY_A));
+    }
+
+    public function delete(int $id): void
+    {
+        global $wpdb;
+        $vendor = $this->find($id);
+        $wpdb->delete(Installer::tables()['vendors'], ['id' => $id], ['%d']);
+        if ($vendor !== null) {
+            unset($this->byUser[$vendor->userId]);
+        }
     }
 
     public function countByStatus(): array

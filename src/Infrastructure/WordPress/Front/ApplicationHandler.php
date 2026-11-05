@@ -5,13 +5,14 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
 
 use Cheppi\Sellers\Application\ResubmitVendorDocuments;
 use Cheppi\Sellers\Application\SubmitVendorApplication;
-use Cheppi\Sellers\Application\UploadedFile;
 use Cheppi\Sellers\Application\VendorRepository;
 use Cheppi\Sellers\Domain\Vendor\DocumentType;
 use Cheppi\Sellers\Domain\Vendor\Ruc;
 use Cheppi\Sellers\Domain\Vendor\VendorApplication;
 use Cheppi\Sellers\Domain\Vendor\VendorValidationException;
+use Cheppi\Sellers\Infrastructure\WordPress\Accounts;
 use Cheppi\Sellers\Infrastructure\WordPress\Installer;
+use Cheppi\Sellers\Infrastructure\WordPress\RequestFiles;
 use WP_Error;
 
 /**
@@ -55,7 +56,7 @@ final class ApplicationHandler
             $this->fail(['form' => __('Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', 'cheppi-sellers')], $values);
         }
 
-        $files = self::uploadedFiles();
+        $files = RequestFiles::documents();
         $terms = !empty($post['terms']);
         $user = wp_get_current_user();
 
@@ -84,7 +85,7 @@ final class ApplicationHandler
 
         // 2) Create the account if needed and sign in.
         if (!$user->exists()) {
-            $userId = $this->createAccount($values['full_name'], $values['email'], (string) $post['password']);
+            $userId = Accounts::create($values['full_name'], $values['email'], (string) $post['password']);
             if ($userId instanceof WP_Error) {
                 $this->fail(['email' => $userId->get_error_message()], $values);
             }
@@ -109,7 +110,7 @@ final class ApplicationHandler
         PanelController::sendNoCacheHeaders();
         check_admin_referer(self::ACTION_RESUBMIT, '_cheppi_nonce');
         try {
-            ($this->resubmit)(get_current_user_id(), self::uploadedFiles());
+            ($this->resubmit)(get_current_user_id(), RequestFiles::documents());
         } catch (VendorValidationException $e) {
             wp_die(esc_html(implode(' ', $e->errors)), esc_html__('No se enviaron los documentos', 'cheppi-sellers'), ['response' => 422, 'back_link' => true]);
         }
@@ -135,27 +136,6 @@ final class ApplicationHandler
         return $errors;
     }
 
-    private function createAccount(string $name, string $email, string $password): int|WP_Error
-    {
-        $base = sanitize_user(current(explode('@', $email)), true) ?: 'vendedor';
-        $login = $base;
-        for ($i = 2; username_exists($login); $i++) {
-            $login = $base . $i;
-        }
-        $parts = preg_split('/\s+/', trim($name), 2) ?: [];
-        $role = get_role('customer') !== null ? 'customer' : get_option('default_role', 'subscriber');
-
-        return wp_insert_user([
-            'user_login' => $login,
-            'user_email' => $email,
-            'user_pass' => $password,
-            'display_name' => $name,
-            'first_name' => $parts[0] ?? '',
-            'last_name' => $parts[1] ?? '',
-            'role' => $role,
-        ]);
-    }
-
     private function withinRateLimit(): bool
     {
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
@@ -166,36 +146,6 @@ final class ApplicationHandler
         }
         set_transient($key, $attempts + 1, HOUR_IN_SECONDS);
         return true;
-    }
-
-    /** @return array<string, UploadedFile> keyed by DocumentType value; empty inputs are skipped */
-    private static function uploadedFiles(): array
-    {
-        $files = [];
-        foreach (DocumentType::cases() as $type) {
-            $raw = $_FILES['doc_' . $type->value] ?? null;
-            if (!is_array($raw) || ($raw['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-                continue;
-            }
-            $tmp = (string) ($raw['tmp_name'] ?? '');
-            $ok = ($raw['error'] ?? 1) === UPLOAD_ERR_OK && $tmp !== '' && is_uploaded_file($tmp);
-            $mime = $ok ? self::detectMime($tmp) : '';
-            $files[$type->value] = new UploadedFile($tmp, (string) ($raw['name'] ?? ''), $mime, $ok ? (int) $raw['size'] : 0);
-        }
-        return $files;
-    }
-
-    private static function detectMime(string $path): string
-    {
-        if (function_exists('finfo_open')) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = $finfo ? (string) finfo_file($finfo, $path) : '';
-            if ($finfo) {
-                finfo_close($finfo);
-            }
-            return $mime;
-        }
-        return (string) (wp_get_image_mime($path) ?: '');
     }
 
     /**

@@ -19,4 +19,10 @@ interface DocumentStore
 
     /** @return list<array{id: int, type: DocumentType, original_name: string, mime: string, size: int, uploaded_at: string}> */
     public function forVendor(int $vendorId): array;
+
+    /** Removes one document of this vendor (file and record). */
+    public function delete(int $vendorId, DocumentType $type): void;
+
+    /** Removes every document of the vendor. */
+    public function deleteAllFor(int $vendorId): void;
 }

@@ -1,5 +1,15 @@
 # Cambios
 
+## 0.3.0 — 2026-11-05
+
+Gestión de vendedores desde el admin.
+
+- **Añadir vendedor** desde wp-admin → Cheppi → Vendedores: con una cuenta existente (por correo) o creando una nueva con correo para que defina su contraseña; datos de la tienda, documentos opcionales, estado inicial (aprobada o en revisión), plan y comisión especial.
+- **Editar datos** de la tienda (nombre, dirección `/tienda/…`, RUC, razón social, celular, categoría, distrito, redes) con control de RUC y dirección únicos.
+- **Documentos desde el admin**: ver, subir, reemplazar y eliminar cada documento.
+- **Eliminar vendedor** con confirmación escribiendo el nombre de la tienda; borra la tienda y sus documentos y conserva la cuenta de usuario. Bloqueado si la tienda tiene ventas o pagos (se suspende en su lugar).
+- **Buscador** por tienda, razón social o RUC, y listado titulado «Vendedores y marcas».
+
 ## 0.2.0 — 2026-11-05
 
 Fase 1: vendedores.

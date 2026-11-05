@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace Cheppi\Sellers\Infrastructure\WordPress;
 
+use Cheppi\Sellers\Application\CreateVendorByAdmin;
+use Cheppi\Sellers\Application\DeleteVendor;
 use Cheppi\Sellers\Application\ResubmitVendorDocuments;
 use Cheppi\Sellers\Application\ReviewVendor;
 use Cheppi\Sellers\Application\SubmitVendorApplication;
+use Cheppi\Sellers\Application\UpdateVendorProfile;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\BusinessRulesPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
@@ -15,6 +18,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\Shortcodes;
 use Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepository;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpDocumentStore;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorActivity;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 use Cheppi\Sellers\Infrastructure\WordPress\Rest\RulesController;
 
@@ -95,6 +99,9 @@ final class Plugin
                 $this->documents,
                 $this->rules,
                 new ReviewVendor($this->vendors, $this->rules, $this->notifier),
+                new CreateVendorByAdmin($this->vendors, $this->documents, $this->rules),
+                new UpdateVendorProfile($this->vendors),
+                new DeleteVendor($this->vendors, $this->documents, new WpVendorActivity()),
                 $this->assets
             ))->register();
         }
