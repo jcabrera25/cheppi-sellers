@@ -2,7 +2,7 @@
 
 Marketplace multivendedor para Cheppi Market (WordPress + WooCommerce), escrito para convertirse más adelante en una plataforma propia sin reescribir la lógica.
 
-**Versión:** 0.1.0 — Fase 0 (esqueleto + Reglas de negocio)
+**Versión:** 0.2.0 — Fase 1 (vendedores)
 
 ## Requisitos
 
@@ -19,6 +19,8 @@ Marketplace multivendedor para Cheppi Market (WordPress + WooCommerce), escrito 
 - **API REST** `GET/PUT /wp-json/cheppi/v1/rules` (solo administradores).
 - **Instalador**: tablas `cheppi_vendors`, `cheppi_ledger`, `cheppi_payouts`, `cheppi_rules_history`, rol `cheppi_vendor` y valores de ejemplo.
 - Declaración de compatibilidad con HPOS de WooCommerce.
+- **Vendedores (0.2.0):** panel `/vendedor/`, registro en 4 pasos con documentos privados, revisión en wp-admin → Cheppi → Vendedores y correos de estado.
+- **Sistema de diseño** en `assets/src/shared/` (tokens y componentes `ch-*`), usado por el panel, el admin y los shortcodes.
 
 ## Estructura
 
@@ -59,6 +61,7 @@ Reglas del proyecto:
 
 - [Publicar una versión](docs/DEPLOY.md)
 - [Versiones publicadas](docs/VERSIONS.md)
+- [Página «Vende en Cheppi» y shortcodes](docs/VENDE-EN-CHEPPI.md)
 
 ## Desinstalar
 

@@ -2,10 +2,11 @@
 
 | Versión | Fecha | Fase | Dónde | Notas |
 | --- | --- | --- | --- | --- |
-| 0.1.0 | 2026-11-05 | 0 · Esqueleto | cheppimarket.ccrea.pe (activo) | Núcleo de dominio, Reglas de negocio, API `cheppi/v1/rules`, tablas y rol. Valores de ejemplo cargados. |
+| 0.2.0 | 2026-11-05 | 1 · Vendedores | cheppimarket.ccrea.pe | Sistema de diseño, panel `/vendedor/`, registro en 4 pasos, documentos privados, revisión en wp-admin, correos, shortcodes de «Vende en Cheppi». |
+| 0.1.0 | 2026-11-05 | 0 · Esqueleto | cheppimarket.ccrea.pe | Núcleo de dominio, Reglas de negocio, API `cheppi/v1/rules`, tablas y rol. |
 
-## Próxima: 0.2.0 · Fase 1 · Vendedores
+## Próxima: 0.3.0 · Fase 2 · Panel y productos
 
-- Registro de vendedor en 4 pasos con documentos y validación de RUC.
-- Aprobación desde wp-admin y correos de estado.
-- Página «Vende en Cheppi».
+- Inicio con cifras reales y gráficos SVG (ventas por día, ventas por categoría).
+- Productos simples y variables desde el panel, galería WebP, moderación y límite por plan.
+- Página pública de tienda `/tienda/<nombre>`.

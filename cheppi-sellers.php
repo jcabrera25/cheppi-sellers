@@ -3,7 +3,7 @@
  * Plugin Name:       Cheppi Sellers
  * Plugin URI:        https://cheppimarket.ccrea.pe
  * Description:       Marketplace multivendedor de Cheppi Market: vendedores, comisiones, libro contable, liquidaciones y envíos por marca.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 7.0
  * Requires PHP:      8.2
  * Author:            Ccrea
@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 defined('ABSPATH') || exit;
 
-define('CHEPPI_SELLERS_VERSION', '0.1.0');
+define('CHEPPI_SELLERS_VERSION', '0.2.0');
 define('CHEPPI_SELLERS_FILE', __FILE__);
 define('CHEPPI_SELLERS_DIR', __DIR__);
 

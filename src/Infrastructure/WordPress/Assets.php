@@ -23,6 +23,18 @@ final class Assets
         }
     }
 
+    /**
+     * Versioned URL of a built file, for pages that print their own tags (the seller panel).
+     */
+    public function url(string $fileName): ?string
+    {
+        $path = CHEPPI_SELLERS_DIR . '/assets/dist/' . $fileName;
+        if (!is_file($path)) {
+            return null;
+        }
+        return add_query_arg('ver', $this->version($path), plugins_url('assets/dist/' . $fileName, CHEPPI_SELLERS_FILE));
+    }
+
     private function version(string $file): string
     {
         return CHEPPI_SELLERS_VERSION . '.' . (string) filemtime($file);

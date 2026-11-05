@@ -11,7 +11,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepositor
  */
 final class Installer
 {
-    public const DB_VERSION = '1';
+    public const DB_VERSION = '2';
     public const DB_VERSION_OPTION = 'cheppi_sellers_db_version';
     public const VENDOR_ROLE = 'cheppi_vendor';
 
@@ -22,12 +22,16 @@ final class Installer
         if (get_option(WpBusinessRulesRepository::OPTION) === false) {
             add_option(WpBusinessRulesRepository::OPTION, BusinessRules::defaults()->toArray(), '', true);
         }
+        PrivateUploads::protect();
         update_option(self::DB_VERSION_OPTION, self::DB_VERSION, false);
+        // Routes like /vendedor/ are registered on init; rebuild rewrite rules on the next request.
+        update_option('cheppi_sellers_flush_rewrites', '1', true);
     }
 
     public static function deactivate(): void
     {
         // Data and roles stay; uninstall.php removes them only if the admin chose so.
+        flush_rewrite_rules();
     }
 
     /** Runs on boot to apply schema changes after a plugin update. */
@@ -47,6 +51,7 @@ final class Installer
             'ledger' => $wpdb->prefix . 'cheppi_ledger',
             'payouts' => $wpdb->prefix . 'cheppi_payouts',
             'rules_history' => $wpdb->prefix . 'cheppi_rules_history',
+            'documents' => $wpdb->prefix . 'cheppi_vendor_documents',
         ];
     }
 
@@ -70,13 +75,32 @@ final class Installer
   ruc varchar(11) NOT NULL DEFAULT '',
   legal_name varchar(200) NOT NULL DEFAULT '',
   phone varchar(30) NOT NULL DEFAULT '',
+  category varchar(40) NOT NULL DEFAULT '',
+  district varchar(40) NOT NULL DEFAULT '',
+  instagram varchar(60) NOT NULL DEFAULT '',
+  website varchar(200) NOT NULL DEFAULT '',
+  status_note text NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   approved_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY user_id (user_id),
   UNIQUE KEY store_slug (store_slug),
+  KEY ruc (ruc),
   KEY status (status)
+) $charset;");
+
+        dbDelta("CREATE TABLE {$t['documents']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  vendor_id bigint(20) unsigned NOT NULL,
+  type varchar(30) NOT NULL,
+  file_name varchar(80) NOT NULL,
+  original_name varchar(200) NOT NULL,
+  mime varchar(60) NOT NULL,
+  size int(10) unsigned NOT NULL,
+  uploaded_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY vendor_type (vendor_id,type)
 ) $charset;");
 
         dbDelta("CREATE TABLE {$t['ledger']} (

@@ -1,0 +1,50 @@
+/*
+ * Cheppi design tokens — the single source of brand values for every screen.
+ * Manual de marca: violeta #6D3BFF, lima #C6F432, noche #16112E, lavanda #F1ECFF, gris texto #5B5670.
+ * Lima is never used as text on white (insufficient contrast).
+ */
+:root {
+  --ch-violet: #6d3bff;
+  --ch-violet-700: #5428e0;
+  --ch-violet-100: #e6ddff;
+  --ch-lime: #c6f432;
+  --ch-lime-200: #e9fbb0;
+  --ch-night: #16112e;
+  --ch-lavender: #f1ecff;
+  --ch-text: #16112e;
+  --ch-text-2: #5b5670;
+  --ch-text-3: #8a85a0;
+  --ch-bg: #f6f4fb;
+  --ch-surface: #ffffff;
+  --ch-border: #ece8f5;
+  --ch-border-strong: #d9d3ea;
+
+  --ch-success: #1f7a3a;
+  --ch-success-bg: #e5f6e9;
+  --ch-warning: #8a5a00;
+  --ch-warning-bg: #fff3d6;
+  --ch-danger: #b42318;
+  --ch-danger-bg: #fdecea;
+  --ch-info: #5428e0;
+  --ch-info-bg: #ede7ff;
+
+  --ch-font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --ch-font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --ch-radius-lg: 20px;
+  --ch-radius: 14px;
+  --ch-radius-sm: 10px;
+  --ch-radius-pill: 999px;
+
+  --ch-space-1: 4px;
+  --ch-space-2: 8px;
+  --ch-space-3: 12px;
+  --ch-space-4: 16px;
+  --ch-space-5: 24px;
+  --ch-space-6: 32px;
+  --ch-space-7: 48px;
+
+  --ch-shadow: 0 1px 2px rgb(22 17 46 / 0.04), 0 4px 16px rgb(22 17 46 / 0.04);
+  --ch-focus: 0 0 0 3px rgb(109 59 255 / 0.35);
+  --ch-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

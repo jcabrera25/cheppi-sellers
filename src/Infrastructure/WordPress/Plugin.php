@@ -3,8 +3,19 @@ declare(strict_types=1);
 
 namespace Cheppi\Sellers\Infrastructure\WordPress;
 
+use Cheppi\Sellers\Application\ResubmitVendorDocuments;
+use Cheppi\Sellers\Application\ReviewVendor;
+use Cheppi\Sellers\Application\SubmitVendorApplication;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\BusinessRulesPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\Shortcodes;
+use Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepository;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpDocumentStore;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 use Cheppi\Sellers\Infrastructure\WordPress\Rest\RulesController;
 
 /**
@@ -15,11 +26,17 @@ final class Plugin
     private static ?self $instance = null;
     private bool $booted = false;
     private readonly WpBusinessRulesRepository $rules;
+    private readonly WpVendorRepository $vendors;
+    private readonly WpDocumentStore $documents;
+    private readonly WpMailNotifier $notifier;
     private readonly Assets $assets;
 
     private function __construct()
     {
         $this->rules = new WpBusinessRulesRepository();
+        $this->vendors = new WpVendorRepository();
+        $this->documents = new WpDocumentStore();
+        $this->notifier = new WpMailNotifier();
         $this->assets = new Assets();
     }
 
@@ -31,6 +48,11 @@ final class Plugin
     public function rules(): WpBusinessRulesRepository
     {
         return $this->rules;
+    }
+
+    public function vendors(): WpVendorRepository
+    {
+        return $this->vendors;
     }
 
     public function boot(): void
@@ -52,13 +74,41 @@ final class Plugin
         }
 
         Installer::maybeUpgrade();
+        add_action('init', [Routes::class, 'register']);
+
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $this->assets);
+        $panel->register();
+
+        (new ApplicationHandler(
+            new SubmitVendorApplication($this->vendors, $this->documents, $this->rules, $this->notifier),
+            new ResubmitVendorDocuments($this->vendors, $this->documents, $this->notifier),
+            $this->vendors,
+            $panel
+        ))->register();
+
+        (new Shortcodes($this->rules, $this->assets))->register();
 
         if (is_admin()) {
             (new BusinessRulesPage($this->rules, $this->assets))->register();
+            (new VendorsPage(
+                $this->vendors,
+                $this->documents,
+                $this->rules,
+                new ReviewVendor($this->vendors, $this->rules, $this->notifier),
+                $this->assets
+            ))->register();
         }
 
         add_action('rest_api_init', function (): void {
             (new RulesController($this->rules))->register();
         });
+
+        // After logging in, vendors land on their panel instead of wp-admin.
+        add_filter('login_redirect', static function (string $redirect, string $requested, $user): string {
+            if ($user instanceof \WP_User && in_array(Installer::VENDOR_ROLE, (array) $user->roles, true) && !user_can($user, 'edit_posts') && ($requested === '' || str_contains($requested, '/wp-admin'))) {
+                return Routes::panelUrl();
+            }
+            return $redirect;
+        }, 10, 3);
     }
 }
