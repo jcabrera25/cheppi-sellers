@@ -55,6 +55,11 @@ Reglas del proyecto:
 2. wp-admin → Plugins → Añadir nuevo → Subir plugin → activar.
 3. Ve a **Cheppi → Reglas de negocio**, revisa los valores de ejemplo y guarda.
 
+## Documentación
+
+- [Publicar una versión](docs/DEPLOY.md)
+- [Versiones publicadas](docs/VERSIONS.md)
+
 ## Desinstalar
 
 Al borrar el plugin se conservan los registros contables. Para eliminarlos también, define `CHEPPI_SELLERS_DELETE_DATA` como `true` en `wp-config.php` antes de borrarlo.
