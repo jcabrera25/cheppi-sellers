@@ -65,6 +65,17 @@ final class WpMailNotifier implements VendorNotifier
         );
     }
 
+    public function newOrder(Vendor $vendor, int $orderId, int $items, string $total, string $url): void
+    {
+        $this->toVendor(
+            $vendor,
+            sprintf('Nuevo pedido #%d en Cheppi', $orderId),
+            sprintf('Tienes un pedido nuevo con <strong>%d producto%s</strong> por <strong>%s</strong>. Prepáralo y actualiza su estado en tu panel; el cliente recibe un aviso en cada paso.', $items, $items === 1 ? '' : 's', esc_html($total)),
+            'Ver pedido',
+            $url
+        );
+    }
+
     private function toVendor(Vendor $vendor, string $subject, string $body, string $cta, string $url): void
     {
         $user = get_userdata($vendor->userId);

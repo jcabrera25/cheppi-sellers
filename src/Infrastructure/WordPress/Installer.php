@@ -11,7 +11,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepositor
  */
 final class Installer
 {
-    public const DB_VERSION = '3';
+    public const DB_VERSION = '4';
     public const DB_VERSION_OPTION = 'cheppi_sellers_db_version';
     public const VENDOR_ROLE = 'cheppi_vendor';
 
@@ -23,6 +23,8 @@ final class Installer
             add_option(WpBusinessRulesRepository::OPTION, BusinessRules::defaults()->toArray(), '', true);
         }
         PrivateUploads::protect();
+        // Pages need the post types registered on init; upgrades run earlier (plugins_loaded).
+        did_action('init') ? Front\StorePage::ensure() : add_action('init', [Front\StorePage::class, 'ensure'], 20);
         update_option(self::DB_VERSION_OPTION, self::DB_VERSION, false);
         // Routes like /vendedor/ are registered on init; rebuild rewrite rules on the next request.
         update_option('cheppi_sellers_flush_rewrites', '1', true);
@@ -52,6 +54,7 @@ final class Installer
             'payouts' => $wpdb->prefix . 'cheppi_payouts',
             'rules_history' => $wpdb->prefix . 'cheppi_rules_history',
             'documents' => $wpdb->prefix . 'cheppi_vendor_documents',
+            'fulfillments' => $wpdb->prefix . 'cheppi_fulfillments',
         ];
     }
 
@@ -83,6 +86,7 @@ final class Installer
   logo_id bigint(20) unsigned NOT NULL DEFAULT 0,
   banner_id bigint(20) unsigned NOT NULL DEFAULT 0,
   about text NULL,
+  delivery_zones text NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   approved_at datetime DEFAULT NULL,
@@ -123,6 +127,23 @@ final class Installer
   KEY vendor_available (vendor_id,available_at),
   KEY order_id (order_id),
   KEY payout_id (payout_id)
+) $charset;");
+
+        dbDelta("CREATE TABLE {$t['fulfillments']} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  order_id bigint(20) unsigned NOT NULL,
+  vendor_id bigint(20) unsigned NOT NULL,
+  status varchar(20) NOT NULL DEFAULT 'new',
+  items_count smallint(5) unsigned NOT NULL DEFAULT 0,
+  subtotal_cents bigint(20) NOT NULL DEFAULT 0,
+  shipping_cents bigint(20) NOT NULL DEFAULT 0,
+  currency char(3) NOT NULL DEFAULT 'PEN',
+  tracking varchar(200) NOT NULL DEFAULT '',
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY order_vendor (order_id,vendor_id),
+  KEY vendor_status (vendor_id,status,created_at)
 ) $charset;");
 
         dbDelta("CREATE TABLE {$t['payouts']} (

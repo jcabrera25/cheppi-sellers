@@ -15,7 +15,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 
 defined('ABSPATH') || exit;
 ?>
-<main class="ch-store" id="main">
+<div class="ch-store">
     <header class="ch-store__head">
         <div class="ch-store__banner">
             <?php if ($vendor->bannerId) {
@@ -76,4 +76,4 @@ defined('ABSPATH') || exit;
             <?php endif; ?>
         <?php endif; ?>
     </section>
-</main>
+</div>

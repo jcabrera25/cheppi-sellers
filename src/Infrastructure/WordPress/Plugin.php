@@ -7,10 +7,14 @@ use Cheppi\Sellers\Application\CreateVendorByAdmin;
 use Cheppi\Sellers\Application\DeleteVendor;
 use Cheppi\Sellers\Application\ResubmitVendorDocuments;
 use Cheppi\Sellers\Application\ReviewVendor;
+use Cheppi\Sellers\Application\RecordOrderSales;
+use Cheppi\Sellers\Application\ReverseOrderSales;
 use Cheppi\Sellers\Application\SaveVendorProduct;
+use Cheppi\Sellers\Application\UpdateFulfillment;
 use Cheppi\Sellers\Application\SubmitVendorApplication;
 use Cheppi\Sellers\Application\UpdateVendorProfile;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\BusinessRulesPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\OrderVendorsBox;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\ProductModeration;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\ImageUploader;
@@ -18,6 +22,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Catalog\VendorStats;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\OrdersHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Shortcodes;
@@ -25,10 +30,15 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\StoreController;
 use Cheppi\Sellers\Infrastructure\WordPress\Mail\ProductPublishedNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepository;
+use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrderSync;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpDeliveryZones;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpDocumentStore;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpFulfillments;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpLedger;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorActivity;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 use Cheppi\Sellers\Infrastructure\WordPress\Rest\RulesController;
+use Cheppi\Sellers\Infrastructure\WordPress\Shipping\CartShipping;
 
 /**
  * Composition root: wires domain services to WordPress. Holds no business logic.
@@ -42,6 +52,9 @@ final class Plugin
     private readonly WpDocumentStore $documents;
     private readonly WpMailNotifier $notifier;
     private readonly Assets $assets;
+    private readonly WpLedger $ledger;
+    private readonly WpFulfillments $fulfillments;
+    private readonly WpDeliveryZones $zones;
 
     private function __construct()
     {
@@ -50,6 +63,15 @@ final class Plugin
         $this->documents = new WpDocumentStore();
         $this->notifier = new WpMailNotifier();
         $this->assets = new Assets();
+        $this->ledger = new WpLedger();
+        $this->fulfillments = new WpFulfillments();
+        $this->zones = new WpDeliveryZones();
+    }
+
+    /** Used by the WooCommerce shipping method, which WooCommerce instantiates itself. */
+    public function deliveryZones(): WpDeliveryZones
+    {
+        return $this->zones;
     }
 
     public static function instance(): self
@@ -91,10 +113,25 @@ final class Plugin
         $images = new ImageUploader();
         $catalog = new WcProductCatalog($images);
 
-        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, new VendorStats(), $this->assets);
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, new VendorStats(), $this->fulfillments, $this->ledger, $this->zones, $this->assets);
         $panel->register();
         (new StoreController($this->vendors, $this->assets))->register();
         (new ProductPublishedNotifier($this->vendors, $this->notifier))->register();
+        (new CartShipping($this->vendors, $this->zones))->register();
+        (new OrderSync(
+            $this->vendors,
+            $this->rules,
+            new RecordOrderSales($this->ledger, $this->fulfillments),
+            new ReverseOrderSales($this->ledger, $this->fulfillments),
+            $this->fulfillments,
+            $this->notifier
+        ))->register();
+        (new OrdersHandler(
+            new UpdateFulfillment($this->fulfillments, $this->ledger, $this->rules),
+            $this->fulfillments,
+            $this->zones,
+            $this->vendors
+        ))->register();
 
         (new PanelHandler(
             new SaveVendorProduct($this->vendors, $catalog, $this->rules),
@@ -125,6 +162,7 @@ final class Plugin
                 $this->assets
             ))->register();
             (new ProductModeration($this->vendors))->register();
+            (new OrderVendorsBox($this->fulfillments, $this->ledger, $this->vendors))->register();
         }
 
         add_action('rest_api_init', function (): void {

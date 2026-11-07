@@ -11,6 +11,7 @@
  * @var array<string, int> $counts
  * @var ?int $limit
  * @var int $used
+ * @var string $layout lista|grid
  */
 
 use Cheppi\Sellers\Domain\Catalog\ProductStatus;
@@ -39,6 +40,10 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
         <?php endforeach; ?>
     </nav>
     <div class="ch-toolbar__end">
+        <div class="ch-viewswitch" role="group" aria-label="<?php esc_attr_e('Vista', 'cheppi-sellers'); ?>">
+            <a class="ch-icon-btn" href="<?php echo esc_url($url(['estado' => $current, 'buscar' => $search, 'vista' => 'lista'])); ?>" title="<?php esc_attr_e('Lista', 'cheppi-sellers'); ?>" <?php echo $layout === 'lista' ? 'aria-current="true"' : ''; ?>><?php echo Icons::svg('list', 18); ?><span class="screen-reader-text"><?php esc_html_e('Lista', 'cheppi-sellers'); ?></span></a>
+            <a class="ch-icon-btn" href="<?php echo esc_url($url(['estado' => $current, 'buscar' => $search, 'vista' => 'grid'])); ?>" title="<?php esc_attr_e('Cuadrícula', 'cheppi-sellers'); ?>" <?php echo $layout === 'grid' ? 'aria-current="true"' : ''; ?>><?php echo Icons::svg('grid', 18); ?><span class="screen-reader-text"><?php esc_html_e('Cuadrícula', 'cheppi-sellers'); ?></span></a>
+        </div>
         <form method="get" action="<?php echo esc_url(Routes::productsUrl()); ?>" role="search">
             <?php if ($current !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($current); ?>"><?php endif; ?>
             <input class="ch-input ch-input--pill" type="search" name="buscar" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>" aria-label="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>">
@@ -64,7 +69,7 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
         <?php if (!$atLimit) : ?><a class="ch-btn ch-btn--primary" href="<?php echo esc_url(Routes::productUrl()); ?>"><?php esc_html_e('Crear producto', 'cheppi-sellers'); ?></a><?php endif; ?>
     </section>
 <?php else : ?>
-    <ul class="ch-products">
+    <ul class="ch-products<?php echo $layout === 'grid' ? ' ch-products--grid' : ''; ?>">
         <?php foreach ($items as $product) :
             $stock = $product->is_type('variable')
                 ? sprintf(_n('%d opción', '%d opciones', count($product->get_children()), 'cheppi-sellers'), count($product->get_children()))
@@ -73,7 +78,9 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
             ?>
             <li class="ch-product">
                 <a class="ch-product__link" href="<?php echo esc_url(Routes::productUrl($product->get_id())); ?>">
-                    <span class="ch-product__thumb"><?php echo $product->get_image_id() ? wp_get_attachment_image($product->get_image_id(), 'thumbnail', false, ['loading' => 'lazy', 'decoding' => 'async', 'alt' => '']) : Icons::svg('box', 22); ?></span>
+                    <span class="ch-product__thumb"><?php echo $product->get_image_id()
+                        ? wp_get_attachment_image($product->get_image_id(), $layout === 'grid' ? 'woocommerce_thumbnail' : 'thumbnail', false, ['loading' => 'lazy', 'decoding' => 'async', 'alt' => '', 'sizes' => $layout === 'grid' ? '(max-width: 560px) 50vw, 240px' : '56px'])
+                        : Icons::svg('box', 22); ?></span>
                     <span class="ch-product__main">
                         <span class="ch-product__name"><?php echo esc_html($product->get_name()); ?></span>
                         <span class="ch-product__meta"><?php echo esc_html($stock); ?></span>

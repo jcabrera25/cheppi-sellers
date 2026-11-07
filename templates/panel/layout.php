@@ -12,6 +12,7 @@
  * @var \Cheppi\Sellers\Infrastructure\WordPress\Assets $assets
  */
 
+use Cheppi\Sellers\Infrastructure\WordPress\Front\Branding;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Icons;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
@@ -40,16 +41,15 @@ $js = $assets->url('panel.js');
 <?php if ($withShell) : ?>
     <div class="ch-shell">
         <aside class="ch-sidebar" aria-label="<?php esc_attr_e('Menú del panel', 'cheppi-sellers'); ?>">
-            <a class="ch-brand" href="<?php echo esc_url(home_url('/')); ?>">
-                <span class="ch-brand__word">cheppi</span><span class="ch-brand__tag">MARKET</span>
-            </a>
+            <?php echo Branding::logo(); // phpcs:ignore WordPress.Security.EscapeOutput -- built escaped ?>
             <nav class="ch-nav">
                 <?php
                 $open = $vendor !== null && $vendor->isPublic();
                 $items = [
                     'inicio' => ['home', __('Inicio', 'cheppi-sellers'), Routes::panelUrl(), true],
                     'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::productsUrl(), $open],
-                    'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), '', false],
+                    'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), Routes::ordersUrl(), $open],
+                    'envios' => ['truck', __('Envíos', 'cheppi-sellers'), Routes::shippingUrl(), $open],
                     'pagos' => ['wallet', __('Pagos', 'cheppi-sellers'), '', false],
                     'mi-tienda' => ['store', __('Mi tienda', 'cheppi-sellers'), Routes::storeSettingsUrl(), $open],
                 ];

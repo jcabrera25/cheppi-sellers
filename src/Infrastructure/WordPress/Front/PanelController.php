@@ -4,13 +4,19 @@ declare(strict_types=1);
 namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
 
 use Cheppi\Sellers\Application\BusinessRulesRepository;
+use Cheppi\Sellers\Application\DeliveryZones;
 use Cheppi\Sellers\Application\DocumentStore;
+use Cheppi\Sellers\Application\Fulfillments;
+use Cheppi\Sellers\Application\Ledger;
 use Cheppi\Sellers\Application\VendorRepository;
 use Cheppi\Sellers\Domain\Catalog\ProductStatus;
+use Cheppi\Sellers\Domain\Order\FulfillmentStatus;
 use Cheppi\Sellers\Domain\Vendor\Vendor;
 use Cheppi\Sellers\Infrastructure\WordPress\Assets;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\VendorStats;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
+use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrderSync;
+use DateTimeImmutable;
 use WP_User;
 
 /**
@@ -26,6 +32,9 @@ final class PanelController
         private readonly BusinessRulesRepository $rules,
         private readonly WcProductCatalog $catalog,
         private readonly VendorStats $stats,
+        private readonly Fulfillments $fulfillments,
+        private readonly Ledger $ledger,
+        private readonly DeliveryZones $zones,
         private readonly Assets $assets
     ) {
     }
@@ -68,6 +77,9 @@ final class PanelController
             'productos' => $this->renderProducts($base),
             'producto' => $this->renderProductForm($base, (int) get_query_var(Routes::ID_VAR)),
             'mi-tienda' => $this->renderPage('storefront', __('Mi tienda', 'cheppi-sellers'), $base, 'mi-tienda'),
+            'pedidos' => $this->renderOrders($base),
+            'pedido' => $this->renderOrder($base, (int) get_query_var(Routes::ID_VAR)),
+            'envios' => $this->renderPage('shipping', __('Envíos', 'cheppi-sellers'), $base + ['zones' => $this->zones->forVendor((int) $vendor->id)], 'envios'),
             default => $this->renderHome($base),
         };
     }
@@ -85,6 +97,10 @@ final class PanelController
             'byCategory' => $vendor->isPublic() ? $this->stats->productsByCategory($vendor->userId) : [],
             'lowStock' => $vendor->isPublic() ? $this->stats->lowStock($vendor->userId) : 0,
             'salesByDay' => $this->stats->salesByDay((int) $vendor->id),
+            'topProducts' => $this->stats->topProducts((int) $vendor->id),
+            'balance' => $this->ledger->balance((int) $vendor->id, new DateTimeImmutable('now')),
+            'openOrders' => array_sum(array_intersect_key($this->fulfillments->countsForVendor((int) $vendor->id), array_flip(['new', 'preparing', 'shipped']))),
+            'hasZones' => $this->zones->forVendor((int) $vendor->id) !== [],
         ], 'inicio');
     }
 
@@ -96,6 +112,7 @@ final class PanelController
         $status = ProductStatus::tryFrom(sanitize_key((string) ($_GET['estado'] ?? '')));
         $search = sanitize_text_field(wp_unslash((string) ($_GET['buscar'] ?? '')));
         $page = max(1, absint($_GET['pagina'] ?? 1));
+        $layout = self::productsLayout();
         $result = $this->catalog->listForVendor($vendor->userId, $status, $search, $page, self::PER_PAGE);
         $rules = $this->rules->current();
 
@@ -109,7 +126,58 @@ final class PanelController
             'counts' => $this->stats->productsByStatus($vendor->userId),
             'limit' => $rules->plan($vendor->planId)?->productLimit,
             'used' => $this->catalog->countForVendor($vendor->userId),
+            'layout' => $layout,
         ], 'productos');
+    }
+
+    /** @param array<string, mixed> $base */
+    private function renderOrders(array $base): never
+    {
+        /** @var Vendor $vendor */
+        $vendor = $base['vendor'];
+        $status = FulfillmentStatus::tryFrom(sanitize_key((string) ($_GET['estado'] ?? '')));
+        $page = max(1, absint($_GET['pagina'] ?? 1));
+        $counts = $this->fulfillments->countsForVendor((int) $vendor->id);
+        $parts = $this->fulfillments->forVendor((int) $vendor->id, $status, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
+        $total = $status === null ? array_sum($counts) : ($counts[$status->value] ?? 0);
+
+        $this->renderPage('orders', __('Pedidos', 'cheppi-sellers'), $base + [
+            'parts' => $parts,
+            'orders' => array_filter(array_combine(
+                array_map(static fn ($p): int => $p->orderId, $parts),
+                array_map(static fn ($p) => wc_get_order($p->orderId), $parts)
+            ) ?: []),
+            'status' => $status,
+            'counts' => $counts,
+            'page' => $page,
+            'pages' => (int) ceil($total / self::PER_PAGE),
+        ], 'pedidos');
+    }
+
+    /** @param array<string, mixed> $base */
+    private function renderOrder(array $base, int $orderId): never
+    {
+        /** @var Vendor $vendor */
+        $vendor = $base['vendor'];
+        $part = $this->fulfillments->find($orderId, (int) $vendor->id);
+        $order = $part !== null ? wc_get_order($orderId) : null;
+        if ($part === null || !$order instanceof \WC_Order) {
+            Flash::set(['type' => 'error', 'message' => __('Pedido no encontrado.', 'cheppi-sellers')]);
+            $this->redirect(Routes::ordersUrl());
+        }
+        $items = array_filter(
+            $order->get_items('line_item'),
+            static fn ($item): bool => (int) $item->get_meta(OrderSync::META_VENDOR) === (int) $vendor->id
+                || ((int) $item->get_meta(OrderSync::META_VENDOR) === 0 && (int) get_post_field('post_author', $item->get_product_id()) === $vendor->userId)
+        );
+        $entries = array_filter($this->ledger->forOrder($orderId), static fn ($e): bool => $e->vendorId === (int) $vendor->id);
+
+        $this->renderPage('order', sprintf(__('Pedido #%d', 'cheppi-sellers'), $orderId), $base + [
+            'part' => $part,
+            'order' => $order,
+            'items' => $items,
+            'entries' => array_values($entries),
+        ], 'pedidos');
     }
 
     /** @param array<string, mixed> $base */
@@ -133,6 +201,17 @@ final class PanelController
             'categories' => $this->catalog->categories(),
             'moderated' => $this->rules->current()->moderateNewProducts,
         ], 'productos');
+    }
+
+    /** List or grid; the choice is kept in a cookie so the page renders right without JavaScript. */
+    private static function productsLayout(): string
+    {
+        $asked = sanitize_key((string) ($_GET['vista'] ?? ''));
+        if (in_array($asked, ['lista', 'grid'], true)) {
+            setcookie('cheppi_products_view', $asked, ['expires' => time() + YEAR_IN_SECONDS, 'path' => '/' . Routes::BASE . '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            return $asked;
+        }
+        return ($_COOKIE['cheppi_products_view'] ?? '') === 'grid' ? 'grid' : 'lista';
     }
 
     /**

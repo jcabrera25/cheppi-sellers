@@ -29,9 +29,9 @@ final class LedgerAndPayoutTest extends TestCase
             $this->entry(LedgerEntryType::Commission, '-4', '2026-11-20'),
         ];
         $balance = Balance::fromEntries($entries, new DateTimeImmutable('2026-11-10'));
-        // Debits count immediately, credits wait for their date.
-        $this->assertSame('88.00', $balance->available->toDecimal());
-        $this->assertSame('50.00', $balance->pending->toDecimal());
+        // A commission waits with its sale; payouts and fees count immediately.
+        $this->assertSame('92.00', $balance->available->toDecimal());
+        $this->assertSame('46.00', $balance->pending->toDecimal());
         $this->assertSame('138.00', $balance->total()->toDecimal());
     }
 

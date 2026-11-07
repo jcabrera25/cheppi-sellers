@@ -11,6 +11,10 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
  *   /vendedor/productos/nuevo/      new product
  *   /vendedor/productos/<id>/       edit product
  *   /vendedor/mi-tienda/            storefront settings
+ *   /vendedor/pedidos/              orders
+ *   /vendedor/pedidos/<id>/         one order (the vendor's part)
+ *   /vendedor/envios/               delivery zones and rates
+ *   /tienda/                        store directory (WordPress page "Tiendas")
  *   /tienda/<slug>/                 public store page
  */
 final class Routes
@@ -30,7 +34,16 @@ final class Routes
         add_rewrite_rule('^' . self::BASE . '/productos/nuevo/?$', $panel . 'producto&' . self::ID_VAR . '=0', 'top');
         add_rewrite_rule('^' . self::BASE . '/productos/([0-9]+)/?$', $panel . 'producto&' . self::ID_VAR . '=$matches[1]', 'top');
         add_rewrite_rule('^' . self::BASE . '/mi-tienda/?$', $panel . 'mi-tienda', 'top');
-        add_rewrite_rule('^' . self::STORE_BASE . '/([a-z0-9-]+)/?$', 'index.php?' . self::STORE_VAR . '=$matches[1]', 'top');
+        add_rewrite_rule('^' . self::BASE . '/pedidos/?$', $panel . 'pedidos', 'top');
+        add_rewrite_rule('^' . self::BASE . '/pedidos/([0-9]+)/?$', $panel . 'pedido&' . self::ID_VAR . '=$matches[1]', 'top');
+        add_rewrite_rule('^' . self::BASE . '/envios/?$', $panel . 'envios', 'top');
+        // Store URLs resolve to the "Tiendas" page so themes render them like any page.
+        $storePage = StorePage::id();
+        add_rewrite_rule(
+            '^' . self::STORE_BASE . '/([a-z0-9-]+)/?$',
+            'index.php?' . ($storePage > 0 ? 'page_id=' . $storePage . '&' : '') . self::STORE_VAR . '=$matches[1]',
+            'top'
+        );
 
         add_filter('query_vars', static function (array $vars): array {
             array_push($vars, self::QUERY_VAR, self::ID_VAR, self::STORE_VAR);
@@ -67,6 +80,21 @@ final class Routes
     public static function storeSettingsUrl(): string
     {
         return self::panelUrl('mi-tienda');
+    }
+
+    public static function ordersUrl(): string
+    {
+        return self::panelUrl('pedidos');
+    }
+
+    public static function orderUrl(int $orderId): string
+    {
+        return self::panelUrl('pedidos/' . $orderId);
+    }
+
+    public static function shippingUrl(): string
+    {
+        return self::panelUrl('envios');
     }
 
     public static function storeUrl(string $slug): string

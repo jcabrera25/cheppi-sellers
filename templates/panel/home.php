@@ -10,6 +10,10 @@
  * @var list<array{name: string, count: int}> $byCategory
  * @var int $lowStock
  * @var list<array{date: string, cents: int}> $salesByDay
+ * @var \Cheppi\Sellers\Domain\Ledger\Balance $balance
+ * @var int $openOrders
+ * @var bool $hasZones
+ * @var list<array{name: string, cents: int, qty: int}> $topProducts
  */
 
 use Cheppi\Sellers\Domain\Payout\PayoutSchedule;
@@ -32,7 +36,7 @@ $uploaded = array_map(static fn (array $d): string => $d['type']->value, $docume
 $hero = match ($status) {
     VendorStatus::Pending => ['clock', __('Tu solicitud está en revisión', 'cheppi-sellers'), __('La revisamos en un máximo de 2 días hábiles. Te avisaremos por correo.', 'cheppi-sellers'), 'ch-chip'],
     VendorStatus::NeedsInfo => ['alert', __('Necesitamos un dato más', 'cheppi-sellers'), __('Revisa el comentario del equipo y sube lo que falta.', 'cheppi-sellers'), 'ch-chip ch-chip--warning'],
-    VendorStatus::Approved => ['check', __('¡Tu tienda está aprobada!', 'cheppi-sellers'), __('Muy pronto podrás subir tus productos desde aquí.', 'cheppi-sellers'), 'ch-chip ch-chip--success'],
+    VendorStatus::Approved => ['check', __('¡Tu tienda está aprobada!', 'cheppi-sellers'), __('Sube productos, configura tus envíos y atiende tus pedidos desde aquí.', 'cheppi-sellers'), 'ch-chip ch-chip--success'],
     VendorStatus::Rejected => ['x', __('No pudimos aprobar tu tienda', 'cheppi-sellers'), __('Revisa el motivo. Si crees que es un error, escríbenos.', 'cheppi-sellers'), 'ch-chip ch-chip--danger'],
     VendorStatus::Suspended => ['alert', __('Tu tienda está suspendida', 'cheppi-sellers'), __('Tus productos no se muestran por ahora. Revisa el motivo.', 'cheppi-sellers'), 'ch-chip ch-chip--danger'],
 };
@@ -56,18 +60,20 @@ $inReview = $byStatus['pending'] ?? 0;
         <span class="ch-stat__value"><?php echo esc_html('S/ ' . number_format($monthCents / 100, 2)); ?></span>
     </div>
     <div class="ch-card ch-stat">
+        <span class="ch-stat__label"><?php esc_html_e('Por cobrar', 'cheppi-sellers'); ?></span>
+        <span class="ch-stat__value"><?php echo esc_html('S/ ' . number_format($balance->total()->cents / 100, 2)); ?></span>
+        <span class="ch-muted ch-small"><?php echo esc_html(sprintf(__('Disponible: S/ %s', 'cheppi-sellers'), number_format($balance->available->cents / 100, 2))); ?></span>
+    </div>
+    <a class="ch-card ch-stat ch-stat--link" href="<?php echo esc_url(Routes::ordersUrl()); ?>">
+        <span class="ch-stat__label"><?php esc_html_e('Pedidos por atender', 'cheppi-sellers'); ?></span>
+        <span class="ch-stat__value"><?php echo (int) $openOrders; ?></span>
+        <span class="ch-muted ch-small"><?php esc_html_e('Nuevos, preparando o en camino', 'cheppi-sellers'); ?></span>
+    </a>
+    <div class="ch-card ch-stat">
         <span class="ch-stat__label"><?php esc_html_e('Productos publicados', 'cheppi-sellers'); ?></span>
         <span class="ch-stat__value"><?php echo (int) $published; ?></span>
         <?php if ($inReview > 0) : ?><span class="ch-chip ch-chip--warning"><?php echo esc_html(sprintf(_n('%d en revisión', '%d en revisión', $inReview, 'cheppi-sellers'), $inReview)); ?></span><?php endif; ?>
-    </div>
-    <div class="ch-card ch-stat">
-        <span class="ch-stat__label"><?php esc_html_e('Stock bajo', 'cheppi-sellers'); ?></span>
-        <span class="ch-stat__value"><?php echo (int) $lowStock; ?></span>
-        <span class="ch-muted ch-small"><?php esc_html_e('3 unidades o menos', 'cheppi-sellers'); ?></span>
-    </div>
-    <div class="ch-card ch-stat">
-        <span class="ch-stat__label"><?php esc_html_e('Estado de la tienda', 'cheppi-sellers'); ?></span>
-        <span><span class="<?php echo esc_attr($hero[3]); ?>"><?php echo esc_html($status->label()); ?></span></span>
+        <?php if ($lowStock > 0) : ?><span class="ch-chip ch-chip--danger"><?php echo esc_html(sprintf(_n('%d con stock bajo', '%d con stock bajo', $lowStock, 'cheppi-sellers'), $lowStock)); ?></span><?php endif; ?>
     </div>
 </section>
 
@@ -88,6 +94,12 @@ $inReview = $byStatus['pending'] ?? 0;
                 </div>
             <?php endif; ?>
 
+            <?php if ($status === VendorStatus::Approved && !$hasZones) : ?>
+                <div class="ch-alert ch-alert--warning" style="margin-top:16px">
+                    <?php echo Icons::svg('truck'); ?>
+                    <p><?php esc_html_e('Configura tus zonas de delivery para cobrar tu propio envío.', 'cheppi-sellers'); ?> <a href="<?php echo esc_url(Routes::shippingUrl()); ?>"><?php esc_html_e('Configurar envíos', 'cheppi-sellers'); ?></a></p>
+                </div>
+            <?php endif; ?>
             <?php if ($status === VendorStatus::NeedsInfo) : ?>
                 <form class="ch-form" style="margin-top:20px" method="post" enctype="multipart/form-data" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                     <input type="hidden" name="action" value="<?php echo esc_attr(ApplicationHandler::ACTION_RESUBMIT); ?>">
@@ -111,6 +123,12 @@ $inReview = $byStatus['pending'] ?? 0;
             <h2 class="ch-card__title"><?php esc_html_e('Ventas por día', 'cheppi-sellers'); ?></h2>
             <?php echo Charts::salesBars($salesByDay); // phpcs:ignore WordPress.Security.EscapeOutput -- built escaped ?>
         </section>
+        <?php if ($topProducts !== []) : ?>
+            <section class="ch-card">
+                <h2 class="ch-card__title"><?php esc_html_e('Más vendidos', 'cheppi-sellers'); ?></h2>
+                <?php echo Charts::ranking($topProducts); // phpcs:ignore WordPress.Security.EscapeOutput -- built escaped ?>
+            </section>
+        <?php endif; ?>
         <?php if ($vendor->isPublic()) : ?>
             <section class="ch-card">
                 <h2 class="ch-card__title"><?php esc_html_e('Productos por categoría', 'cheppi-sellers'); ?></h2>

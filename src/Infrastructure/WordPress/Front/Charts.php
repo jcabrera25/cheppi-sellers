@@ -50,10 +50,32 @@ final class Charts
             ? sprintf(__('Ventas de los últimos %1$d días: S/ %2$s', 'cheppi-sellers'), $n, number_format($total / 100, 2))
             : sprintf(__('Sin ventas en los últimos %d días', 'cheppi-sellers'), $n);
 
-        return sprintf(
+        return sprintf('<p class="ch-chart__total">%s</p>', esc_html($summary)) . sprintf(
             '<svg class="ch-chart" viewBox="0 0 %1$d %2$d" role="img" aria-label="%3$s"><line x1="%4$d" x2="%5$d" y1="%6$d" y2="%6$d" stroke="var(--ch-border)"/>%7$s</svg>',
             $w, $h, esc_attr($summary), $pad / 2, $w - $pad / 2, $h - 24, $bars
         );
+    }
+
+    /**
+     * Ranked horizontal bars (HTML + CSS widths; reads well on phones and with screen readers).
+     *
+     * @param list<array{name: string, cents: int, qty: int}> $rows
+     */
+    public static function ranking(array $rows): string
+    {
+        $max = max(1, ...array_map(static fn (array $r): int => $r['cents'], $rows ?: [['cents' => 1]]));
+        $out = '<ol class="ch-rank">';
+        foreach ($rows as $i => $row) {
+            $out .= sprintf(
+                '<li><span class="ch-rank__name">%s</span><span class="ch-rank__value">S/ %s · %s</span><span class="ch-rank__bar"><span style="width:%d%%;background:%s"></span></span></li>',
+                esc_html($row['name']),
+                esc_html(number_format($row['cents'] / 100, 2)),
+                esc_html(sprintf(_n('%d und.', '%d und.', $row['qty'], 'cheppi-sellers'), $row['qty'])),
+                (int) max(4, round($row['cents'] / $max * 100)),
+                $i === 0 ? 'var(--ch-lime)' : 'var(--ch-violet)'
+            );
+        }
+        return $out . '</ol>';
     }
 
     /**

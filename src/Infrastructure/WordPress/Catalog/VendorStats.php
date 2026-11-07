@@ -73,10 +73,14 @@ final class VendorStats
         $tz = wp_timezone();
         $start = (new \DateTimeImmutable('today', $tz))->modify('-' . ($days - 1) . ' days');
         $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT DATE(created_at) AS d, SUM(amount_cents) AS c FROM {$table}
-             WHERE vendor_id = %d AND type = 'sale' AND created_at >= %s GROUP BY DATE(created_at)",
+            "SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS d, SUM(amount_cents) AS c FROM {$table}
+             WHERE vendor_id = %d AND type = 'sale' AND created_at >= %s
+               AND order_id NOT IN (SELECT order_id FROM {$table} WHERE vendor_id = %d AND type = 'refund')
+             GROUP BY d",
+            $tz->getOffset(new \DateTimeImmutable('now', $tz)),
             $vendorId,
-            $start->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s')
+            $start->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+            $vendorId
         ), ARRAY_A);
         $byDay = [];
         foreach ((array) $rows as $row) {
@@ -88,5 +92,29 @@ final class VendorStats
             $out[] = ['date' => $date, 'cents' => $byDay[$date] ?? 0];
         }
         return $out;
+    }
+
+    /**
+     * Best sellers by amount (cancelled orders excluded).
+     *
+     * @return list<array{name: string, cents: int, qty: int}>
+     */
+    public function topProducts(int $vendorId, int $limit = 5): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT oi.order_item_name AS name, SUM(l.amount_cents) AS c, SUM(CAST(qty.meta_value AS UNSIGNED)) AS q
+             FROM {$table} l
+             JOIN {$wpdb->prefix}woocommerce_order_items oi ON oi.order_item_id = l.order_item_id
+             LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta qty ON qty.order_item_id = l.order_item_id AND qty.meta_key = '_qty'
+             WHERE l.vendor_id = %d AND l.type = 'sale'
+               AND l.order_id NOT IN (SELECT order_id FROM {$table} WHERE vendor_id = %d AND type = 'refund')
+             GROUP BY oi.order_item_name ORDER BY c DESC LIMIT %d",
+            $vendorId,
+            $vendorId,
+            $limit
+        ), ARRAY_A);
+        return array_map(static fn (array $r): array => ['name' => (string) $r['name'], 'cents' => (int) $r['c'], 'qty' => (int) $r['q']], (array) $rows);
     }
 }

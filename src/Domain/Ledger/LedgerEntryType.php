@@ -16,6 +16,12 @@ enum LedgerEntryType: string
     case Payout = 'payout';           // - money transferred to the vendor
     case Adjustment = 'adjustment';   // +/- manual correction by an admin
 
+    /** Debits that do not wait for a delivery (they are not tied to a sale). */
+    public function isImmediateDebit(): bool
+    {
+        return in_array($this, [self::Payout, self::ServiceFee, self::Adjustment], true);
+    }
+
     public function label(): string
     {
         return match ($this) {

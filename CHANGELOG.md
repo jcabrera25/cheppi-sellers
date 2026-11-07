@@ -1,5 +1,21 @@
 # Cambios
 
+## 0.5.0 — 2026-11-07
+
+Fase 3: pedidos, comisiones y envíos.
+
+- **Libro contable por pedido**: cuando un pedido se paga (Procesando o Completado) cada línea de un vendedor registra la venta y la comisión de Cheppi, congelada al momento de la compra (vendedor > categoría > plan). El delivery cobrado por la marca se registra como suyo, sin comisión. Si el pedido se cancela, reembolsa o falla, se escriben los asientos contrarios (el libro nunca se edita). Todo es idempotente.
+- **El dinero espera la entrega**: queda retenido hasta que el vendedor marca «Entregado»; desde ahí corre el plazo de devolución y luego pasa a disponible para el corte.
+- **Pedidos en el panel** (`/vendedor/pedidos/`): lista con filtros por estado y detalle con productos, datos de entrega (celular con enlace a WhatsApp), estado (Nuevo → Preparando → En camino → Entregado), seguimiento y «Tu dinero» (venta, comisión, delivery, lo que recibe). Cada cambio envía una nota al cliente por correo; cuando todos los vendedores entregan, el pedido pasa a Completado.
+- **Envíos de la marca** (`/vendedor/envios/`): hasta 6 zonas con distritos de Lima y Callao, tarifa, días de entrega y envío gratis desde un monto; opción «Todos los demás distritos».
+- **Carrito dividido por vendedor**: un paquete de envío por marca («Envío de …») con su tarifa según el distrito; los productos de Cheppi siguen con las tarifas de WooCommerce. Funciona con el checkout de bloques; el campo Ciudad se llama «Distrito».
+- **Correo al vendedor** por cada pedido nuevo y **caja «Vendedores»** en el pedido de WooCommerce con estado y comisión por vendedor.
+- **Inicio**: «Por cobrar» (y disponible), «Pedidos por atender», ventas por día con total, «Más vendidos» y aviso si faltan las zonas de envío. Las ventas canceladas no cuentan.
+- **Productos en cuadrícula o lista** (se recuerda la elección).
+- **Página de tienda como página de WordPress** («Tiendas», `/tienda/`): el header y footer de Divi 5 cargan con sus estilos; `/tienda/` lista las tiendas aprobadas.
+- **Logo original** del sitio en el panel y en el registro.
+- Correcciones: los botones-enlace del panel perdían su color; columnas que se desbordaban entre 760 y 1180 px; montos que se partían en dos líneas; avatar oculto en celular.
+
 ## 0.4.0 — 2026-11-05
 
 Fase 2: panel y productos.

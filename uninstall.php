@@ -13,7 +13,7 @@ if (!defined('CHEPPI_SELLERS_DELETE_DATA') || CHEPPI_SELLERS_DELETE_DATA !== tru
 }
 
 global $wpdb;
-foreach (['cheppi_vendors', 'cheppi_ledger', 'cheppi_payouts', 'cheppi_rules_history'] as $table) {
+foreach (['cheppi_vendors', 'cheppi_ledger', 'cheppi_payouts', 'cheppi_rules_history', 'cheppi_vendor_documents', 'cheppi_fulfillments'] as $table) {
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}{$table}"); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 }
 delete_option('cheppi_business_rules');

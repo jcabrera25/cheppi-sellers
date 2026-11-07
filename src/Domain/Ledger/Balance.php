@@ -29,8 +29,9 @@ final class Balance
         $available = Money::zero($currency);
         $pending = Money::zero($currency);
         foreach ($entries as $entry) {
-            // Debits (payouts, refunds, fees) reduce what is available immediately.
-            if ($entry->isAvailable($now) || $entry->amount->isNegative()) {
+            // Payouts, fees and negative adjustments reduce what is available immediately;
+            // sales, their commissions and their refunds follow the sale's date.
+            if ($entry->isAvailable($now) || ($entry->amount->isNegative() && $entry->type->isImmediateDebit())) {
                 $available = $available->add($entry->amount);
             } else {
                 $pending = $pending->add($entry->amount);

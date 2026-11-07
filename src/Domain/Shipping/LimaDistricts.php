@@ -33,6 +33,38 @@ final class LimaDistricts
         return isset(self::ALL[$code]);
     }
 
+    /** Code for a district typed or chosen by its name ("Jesús María", "jesus maria", "Surco"...); null if unknown. */
+    public static function fromName(string $name): ?string
+    {
+        $key = self::normalize($name);
+        if ($key === '') {
+            return null;
+        }
+        if (isset(self::ALL[$key]) || isset(self::ALL[str_replace(' ', '-', $key)])) {
+            return isset(self::ALL[$key]) ? $key : str_replace(' ', '-', $key);
+        }
+        static $byName = null;
+        if ($byName === null) {
+            $byName = [];
+            foreach (self::ALL as $code => $label) {
+                $byName[self::normalize($label)] = $code;
+                $byName[self::normalize((string) preg_replace('/\s*\(.*\)$/', '', $label))] = $code;
+            }
+            $byName['surco'] = 'surco';
+            $byName['cercado de lima'] = 'lima';
+            $byName['chosica'] = 'lurigancho';
+            $byName['magdalena'] = 'magdalena';
+        }
+        return $byName[$key] ?? null;
+    }
+
+    private static function normalize(string $text): string
+    {
+        $text = mb_strtolower(trim($text));
+        $text = strtr($text, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
+        return trim((string) preg_replace('/[^a-z0-9]+/', ' ', $text));
+    }
+
     public static function label(string $code): string
     {
         return self::ALL[$code] ?? $code;

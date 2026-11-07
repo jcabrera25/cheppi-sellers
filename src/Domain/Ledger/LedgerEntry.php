@@ -25,6 +25,21 @@ final class LedgerEntry
     ) {
     }
 
+    /** available_at of sale money while the order is not delivered yet. */
+    public const UNTIL_DELIVERED = '9999-12-31 00:00:00';
+
+    public static function untilDelivered(): DateTimeImmutable
+    {
+        return new DateTimeImmutable(self::UNTIL_DELIVERED, new \DateTimeZone('UTC'));
+    }
+
+    /** The opposite entry, used when an order is cancelled or refunded. */
+    public function reversal(DateTimeImmutable $at, string $note): self
+    {
+        $type = $this->type === LedgerEntryType::Commission ? LedgerEntryType::Commission : LedgerEntryType::Refund;
+        return new self($this->vendorId, $type, $this->amount->negate(), $at, $this->availableAt, $this->orderId, $this->orderItemId, $this->commissionBps, $note);
+    }
+
     public function isAvailable(DateTimeImmutable $now): bool
     {
         return $this->availableAt <= $now;

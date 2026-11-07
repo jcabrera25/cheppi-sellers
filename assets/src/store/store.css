@@ -69,3 +69,12 @@
 @media (prefers-reduced-motion: reduce) {
   .ch-store__img img { transition: none; }
 }
+
+/* Directory (/tienda/) */
+.ch-store__title { margin: 0; font: 800 clamp(1.8rem, 3.4vw, 2.6rem)/1.1 var(--ch-font-display); letter-spacing: -0.035em; color: var(--ch-night); }
+.ch-store__grid--brands { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); margin-top: var(--ch-space-6); }
+.ch-store__grid--brands a { justify-items: center; text-align: center; padding: var(--ch-space-5) var(--ch-space-3); border: 1px solid var(--ch-border); border-radius: var(--ch-radius-lg); transition: border-color 200ms var(--ch-ease), box-shadow 200ms var(--ch-ease); }
+.ch-store__grid--brands a:hover { border-color: var(--ch-violet); box-shadow: var(--ch-shadow); }
+.ch-store__brand { width: 88px; height: 88px; border-radius: 24px; overflow: hidden; display: grid; place-items: center; background: var(--ch-lime); font: 800 2rem var(--ch-font-display); color: var(--ch-night); }
+.ch-store__brand img { width: 100%; height: 100%; object-fit: cover; }
+.ch-store__meta { color: var(--ch-text-2); font-size: 0.85rem; }
