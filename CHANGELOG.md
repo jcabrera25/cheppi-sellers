@@ -1,5 +1,26 @@
 # Cambios
 
+## 0.7.0 — 2026-11-07
+
+Fase 5: promociones, métricas, carga masiva y páginas de marca premium.
+
+- **Campañas** (Cheppi → Campañas): fechas y comisión rebajada; el vendedor se une desde Promociones y sus ventas en esas fechas pagan la comisión de campaña (si es menor).
+- **Cupones del vendedor**: código, % o monto por producto, compra mínima, vencimiento y usos; solo descuentan productos de esa tienda.
+- **Productos destacados pagados**: 3 a 30 días a S/ 5 por día (editable en Reglas); usa el «destacado» de WooCommerce, se cobra del saldo y se apaga solo al vencer.
+- **Métricas** para el vendedor (7/30/90 días: ventas, pedidos, ticket, comisión, cumplimiento, horas a envío, atrasados, más vendidos) y para el admin (GMV, comisión efectiva, top vendedores, pedidos atrasados).
+- **Importar/exportar productos** por CSV (Excel/Google Sheets): plantilla, actualización por SKU, fotos por URL, informe por fila.
+- **Página de marca premium** en `/marca/<tienda>/`: el vendedor la solicita; el admin elige la página diseñada en Divi 5 y puede cobrar el diseño del saldo. La tienda muestra «Conoce la marca».
+
+## 0.6.0 — 2026-11-07
+
+Fase 4: liquidaciones.
+
+- **Corte automático** (WP-Cron diario, 06:00) los días configurados: junta lo liberado de cada vendedor (entregado + plazo de devolución, menos comisiones y servicios) si llega al mínimo. También «Hacer corte hoy».
+- **Cheppi → Liquidaciones**: por transferir / pagadas / anuladas, CSV para transferencias (banco, titular, CCI, monto), «Pagado» con n.º de operación (avisa al vendedor por correo) y «Anular» (el dinero vuelve al saldo, sin duplicarse).
+- **Estado de cuenta PDF** por liquidación, con los movimientos incluidos (generador PDF propio, sin librerías).
+- **Pagos** en el panel: disponible, retenido, próximo corte, cuenta bancaria (validación de CCI de 20 dígitos), liquidaciones con PDF y movimientos.
+- **Auditoría** de seguridad y velocidad en `docs/AUDIT.md`.
+
 ## 0.5.0 — 2026-11-07
 
 Fase 3: pedidos, comisiones y envíos.

@@ -76,6 +76,28 @@ final class WpMailNotifier implements VendorNotifier
         );
     }
 
+    public function payoutPaid(Vendor $vendor, string $amount, string $reference): void
+    {
+        $this->toVendor(
+            $vendor,
+            sprintf('Te transferimos S/ %s', $amount),
+            sprintf('Cheppi transfirió <strong>S/ %s</strong> a tu cuenta (operación %s). Descarga el estado de cuenta desde tu panel.', esc_html($amount), esc_html($reference)),
+            'Ver mis pagos',
+            Routes::paymentsUrl()
+        );
+    }
+
+    /** @param string $message plain text from the vendor */
+    public function premiumRequested(Vendor $vendor, string $message): void
+    {
+        $this->toAdmin(
+            'Solicitud de página de marca premium: ' . $vendor->storeName,
+            sprintf('%s pidió una página de marca premium.%s', esc_html($vendor->storeName), $message !== '' ? '<br><br>' . nl2br(esc_html($message)) : ''),
+            'Ver vendedor',
+            VendorsPage::detailUrl((int) $vendor->id)
+        );
+    }
+
     private function toVendor(Vendor $vendor, string $subject, string $body, string $cta, string $url): void
     {
         $user = get_userdata($vendor->userId);

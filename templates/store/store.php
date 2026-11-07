@@ -39,6 +39,10 @@ defined('ABSPATH') || exit;
                 </p>
             </div>
         </div>
+        <?php $brandUrl = (string) apply_filters('cheppi_sellers_brand_url', '', $vendor); ?>
+        <?php if ($brandUrl !== '') : ?>
+            <p><a class="ch-store__brandlink" href="<?php echo esc_url($brandUrl); ?>"><?php esc_html_e('Conoce la marca →', 'cheppi-sellers'); ?></a></p>
+        <?php endif; ?>
         <?php if ($vendor->about !== '') : ?>
             <p class="ch-store__about"><?php echo nl2br(esc_html($vendor->about)); ?></p>
         <?php endif; ?>

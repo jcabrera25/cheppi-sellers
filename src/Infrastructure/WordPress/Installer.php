@@ -11,7 +11,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepositor
  */
 final class Installer
 {
-    public const DB_VERSION = '4';
+    public const DB_VERSION = '5';
     public const DB_VERSION_OPTION = 'cheppi_sellers_db_version';
     public const VENDOR_ROLE = 'cheppi_vendor';
 
@@ -33,6 +33,7 @@ final class Installer
     public static function deactivate(): void
     {
         // Data and roles stay; uninstall.php removes them only if the admin chose so.
+        Scheduler::unschedule();
         flush_rewrite_rules();
     }
 
@@ -87,6 +88,10 @@ final class Installer
   banner_id bigint(20) unsigned NOT NULL DEFAULT 0,
   about text NULL,
   delivery_zones text NULL,
+  bank_details text NULL,
+  premium_page_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  premium_status varchar(20) NOT NULL DEFAULT '',
+  campaigns varchar(255) NOT NULL DEFAULT '',
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   approved_at datetime DEFAULT NULL,
@@ -141,6 +146,8 @@ final class Installer
   tracking varchar(200) NOT NULL DEFAULT '',
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
+  shipped_at datetime DEFAULT NULL,
+  delivered_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY order_vendor (order_id,vendor_id),
   KEY vendor_status (vendor_id,status,created_at)

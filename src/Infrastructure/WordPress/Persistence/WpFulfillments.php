@@ -21,7 +21,10 @@ final class WpFulfillments implements Fulfillments
         $wpdb->query($wpdb->prepare(
             "INSERT INTO {$table} (order_id, vendor_id, status, items_count, subtotal_cents, shipping_cents, currency, tracking, created_at, updated_at)
              VALUES (%d, %d, %s, %d, %d, %d, %s, %s, %s, %s)
-             ON DUPLICATE KEY UPDATE status = VALUES(status), tracking = VALUES(tracking), updated_at = VALUES(updated_at)",
+             ON DUPLICATE KEY UPDATE
+               shipped_at = IF(VALUES(status) = 'shipped' AND shipped_at IS NULL, VALUES(updated_at), shipped_at),
+               delivered_at = IF(VALUES(status) = 'delivered' AND delivered_at IS NULL, VALUES(updated_at), delivered_at),
+               status = VALUES(status), tracking = VALUES(tracking), updated_at = VALUES(updated_at)",
             $f->orderId,
             $f->vendorId,
             $f->status->value,

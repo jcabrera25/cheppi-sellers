@@ -22,7 +22,7 @@ final class Charts
         $h = 180;
         $pad = 24;
         $n = max(1, count($rows));
-        $max = max(1, ...array_map(static fn (array $r): int => $r['cents'], $rows));
+        $max = max(1, ...array_map(static fn (array $r): int => $r['cents'], $rows ?: [['cents' => 0]]));
         $slot = ($w - $pad) / $n;
         $barW = max(6, $slot * 0.56);
         $total = array_sum(array_map(static fn (array $r): int => $r['cents'], $rows));

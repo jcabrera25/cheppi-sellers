@@ -13,9 +13,57 @@ final class FakeLedger implements Ledger
     /** @var list<LedgerEntry> */
     public array $entries = [];
 
+    private int $nextId = 1;
+
     public function add(array $entries): void
     {
-        array_push($this->entries, ...$entries);
+        foreach ($entries as $e) {
+            $this->entries[] = new LedgerEntry($e->vendorId, $e->type, $e->amount, $e->createdAt, $e->availableAt, $e->orderId, $e->orderItemId, $e->commissionBps, $e->note, $this->nextId++, $e->payoutId);
+        }
+    }
+
+    public function vendorsWithPayable(DateTimeImmutable $cutoff): array
+    {
+        $ids = [];
+        foreach ($this->entries as $e) {
+            if ($e->isPayableAt($cutoff)) {
+                $ids[$e->vendorId] = $e->vendorId;
+            }
+        }
+        return array_values($ids);
+    }
+
+    public function payable(int $vendorId, DateTimeImmutable $cutoff): array
+    {
+        return array_values(array_filter($this->entries, static fn (LedgerEntry $e): bool => $e->vendorId === $vendorId && $e->isPayableAt($cutoff)));
+    }
+
+    public function assignPayout(array $entryIds, int $payoutId): void
+    {
+        foreach ($this->entries as $i => $e) {
+            if (in_array($e->id, $entryIds, true)) {
+                $this->entries[$i] = $e->withPayout($payoutId);
+            }
+        }
+    }
+
+    public function releasePayout(int $payoutId): void
+    {
+        foreach ($this->entries as $i => $e) {
+            if ($e->payoutId === $payoutId && $e->type !== \Cheppi\Sellers\Domain\Ledger\LedgerEntryType::Payout) {
+                $this->entries[$i] = $e->withPayout(null);
+            }
+        }
+    }
+
+    public function forPayout(int $payoutId): array
+    {
+        return array_values(array_filter($this->entries, static fn (LedgerEntry $e): bool => $e->payoutId === $payoutId));
+    }
+
+    public function forVendor(int $vendorId, int $limit, int $offset = 0): array
+    {
+        return array_slice(array_reverse(array_values(array_filter($this->entries, static fn (LedgerEntry $e): bool => $e->vendorId === $vendorId))), $offset, $limit);
     }
 
     public function forOrder(int $orderId): array
@@ -27,7 +75,7 @@ final class FakeLedger implements Ledger
     {
         foreach ($this->entries as $i => $e) {
             if ($e->orderId === $orderId && $e->vendorId === $vendorId) {
-                $this->entries[$i] = new LedgerEntry($e->vendorId, $e->type, $e->amount, $e->createdAt, $availableAt, $e->orderId, $e->orderItemId, $e->commissionBps, $e->note);
+                $this->entries[$i] = new LedgerEntry($e->vendorId, $e->type, $e->amount, $e->createdAt, $availableAt, $e->orderId, $e->orderItemId, $e->commissionBps, $e->note, $e->id, $e->payoutId);
             }
         }
     }

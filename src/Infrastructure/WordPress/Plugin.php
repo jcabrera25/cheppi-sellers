@@ -3,6 +3,19 @@ declare(strict_types=1);
 
 namespace Cheppi\Sellers\Infrastructure\WordPress;
 
+use Cheppi\Sellers\Application\GeneratePayouts;
+use Cheppi\Sellers\Application\SettlePayout;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\CampaignsPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\MetricsPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Admin\PayoutsPage;
+use Cheppi\Sellers\Infrastructure\WordPress\Brand\PremiumPages;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelTools;
+use Cheppi\Sellers\Infrastructure\WordPress\Payouts\PayoutFiles;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpPayouts;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorExtras;
+use Cheppi\Sellers\Infrastructure\WordPress\Promotions\Campaigns;
+use Cheppi\Sellers\Infrastructure\WordPress\Promotions\FeaturedProducts;
+use Cheppi\Sellers\Infrastructure\WordPress\Promotions\VendorCoupons;
 use Cheppi\Sellers\Application\CreateVendorByAdmin;
 use Cheppi\Sellers\Application\DeleteVendor;
 use Cheppi\Sellers\Application\ResubmitVendorDocuments;
@@ -112,8 +125,22 @@ final class Plugin
 
         $images = new ImageUploader();
         $catalog = new WcProductCatalog($images);
+        $stats = new VendorStats();
+        $payouts = new WpPayouts();
+        $extras = new WpVendorExtras();
+        $campaigns = new Campaigns();
+        $coupons = new VendorCoupons($this->vendors);
+        $featured = new FeaturedProducts($this->ledger, $this->rules);
+        $generatePayouts = new GeneratePayouts($this->ledger, $payouts, $this->rules);
+        $saveProduct = new SaveVendorProduct($this->vendors, $catalog, $this->rules);
 
-        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, new VendorStats(), $this->fulfillments, $this->ledger, $this->zones, $this->assets);
+        $coupons->register();
+        (new PremiumPages($this->vendors, $extras, $this->ledger, $this->rules))->register();
+        (new PayoutFiles($payouts, $this->ledger, $this->vendors, $extras))->register();
+        (new Scheduler($generatePayouts, $this->rules, $featured))->register();
+        (new PanelTools($this->vendors, $extras, $coupons, $campaigns, $featured, $saveProduct, $catalog, $this->notifier))->register();
+
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, $stats, $this->fulfillments, $this->ledger, $this->zones, $this->assets, $payouts, $extras, $campaigns, $coupons, $featured);
         $panel->register();
         (new StoreController($this->vendors, $this->assets))->register();
         (new ProductPublishedNotifier($this->vendors, $this->notifier))->register();
@@ -124,7 +151,9 @@ final class Plugin
             new RecordOrderSales($this->ledger, $this->fulfillments),
             new ReverseOrderSales($this->ledger, $this->fulfillments),
             $this->fulfillments,
-            $this->notifier
+            $this->notifier,
+            $campaigns,
+            $extras
         ))->register();
         (new OrdersHandler(
             new UpdateFulfillment($this->fulfillments, $this->ledger, $this->rules),
@@ -134,7 +163,7 @@ final class Plugin
         ))->register();
 
         (new PanelHandler(
-            new SaveVendorProduct($this->vendors, $catalog, $this->rules),
+            $saveProduct,
             $catalog,
             $this->vendors,
             $images
@@ -163,6 +192,9 @@ final class Plugin
             ))->register();
             (new ProductModeration($this->vendors))->register();
             (new OrderVendorsBox($this->fulfillments, $this->ledger, $this->vendors))->register();
+            (new PayoutsPage($this->assets, $payouts, $this->vendors, $extras, $generatePayouts, new SettlePayout($this->ledger, $payouts), $this->rules, $this->notifier))->register();
+            (new CampaignsPage($this->assets, $campaigns))->register();
+            (new MetricsPage($this->assets, $stats, $this->vendors, $this->rules))->register();
         }
 
         add_action('rest_api_init', function (): void {

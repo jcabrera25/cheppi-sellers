@@ -189,6 +189,11 @@ $periods = [
                 <span><?php esc_html_e('Revisar cada producto nuevo antes de publicarlo', 'cheppi-sellers'); ?></span>
             </label>
             <p class="ch-muted ch-card__lead"><?php esc_html_e('Si lo desactivas, los productos de vendedores aprobados se publican al instante.', 'cheppi-sellers'); ?></p>
+            <label class="ch-field" style="max-width:240px">
+                <span class="ch-field__label"><?php esc_html_e('Producto destacado: precio por día (S/)', 'cheppi-sellers'); ?></span>
+                <input class="ch-input" type="text" inputmode="decimal" name="rules[featured_per_day]" value="<?php echo esc_attr((string) ($form['featured_per_day'] ?? '5.00')); ?>">
+                <?php $fieldError('featured_per_day'); ?>
+            </label>
         </section>
 
         <section class="ch-card">

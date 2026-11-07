@@ -48,6 +48,7 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
             <?php if ($current !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($current); ?>"><?php endif; ?>
             <input class="ch-input ch-input--pill" type="search" name="buscar" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>" aria-label="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>">
         </form>
+        <a class="ch-btn ch-btn--ghost" href="<?php echo esc_url(Routes::importUrl()); ?>"><?php esc_html_e('Importar', 'cheppi-sellers'); ?></a>
         <?php if ($atLimit) : ?>
             <span class="ch-btn ch-btn--ghost" aria-disabled="true"><?php esc_html_e('Límite del plan alcanzado', 'cheppi-sellers'); ?></span>
         <?php else : ?>

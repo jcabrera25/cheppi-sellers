@@ -439,3 +439,21 @@ body.ch-app {
   .ch-order__total, .ch-order .ch-chip { grid-column: 2; justify-self: start; }
   .ch-row--4 { grid-template-columns: 1fr 1fr; }
 }
+
+/* Payments */
+.ch-order--static:hover { border-color: var(--ch-border); }
+.ch-moves { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.ch-moves th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ch-text-3); padding: 0 8px 8px; }
+.ch-moves td { padding: 10px 8px; border-top: 1px solid var(--ch-border); vertical-align: top; }
+.ch-moves .ch-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (max-width: 560px) { .ch-moves th:nth-child(3), .ch-moves td:nth-child(3) { display: none; } }
+
+/* Promotions / import */
+.ch-campaign { grid-template-columns: minmax(0, 1fr) auto; }
+.ch-campaign form { margin: 0; }
+.ch-steps-text { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.ch-premium { margin-top: var(--ch-space-4); }
+@media (max-width: 760px) {
+  .ch-campaign { grid-template-columns: minmax(0, 1fr); }
+  .ch-nav { overflow-x: auto; grid-auto-columns: minmax(68px, 1fr); scrollbar-width: none; }
+}

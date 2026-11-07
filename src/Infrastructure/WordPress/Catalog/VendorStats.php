@@ -66,21 +66,20 @@ final class VendorStats
      *
      * @return list<array{date: string, cents: int}> oldest first, one row per day, zeros included
      */
-    public function salesByDay(int $vendorId, int $days = 14): array
+    public function salesByDay(?int $vendorId, int $days = 14): array
     {
         global $wpdb;
         $table = Installer::tables()['ledger'];
         $tz = wp_timezone();
         $start = (new \DateTimeImmutable('today', $tz))->modify('-' . ($days - 1) . ' days');
+        $vendorSql = $vendorId !== null ? $wpdb->prepare(' AND vendor_id = %d', $vendorId) : '';
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS d, SUM(amount_cents) AS c FROM {$table}
-             WHERE vendor_id = %d AND type = 'sale' AND created_at >= %s
-               AND order_id NOT IN (SELECT order_id FROM {$table} WHERE vendor_id = %d AND type = 'refund')
+             WHERE type = 'sale' AND created_at >= %s{$vendorSql}
+               AND order_id NOT IN (SELECT order_id FROM {$table} WHERE type = 'refund'{$vendorSql})
              GROUP BY d",
             $tz->getOffset(new \DateTimeImmutable('now', $tz)),
-            $vendorId,
-            $start->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
-            $vendorId
+            $start->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s')
         ), ARRAY_A);
         $byDay = [];
         foreach ((array) $rows as $row) {
@@ -116,5 +115,80 @@ final class VendorStats
             $limit
         ), ARRAY_A);
         return array_map(static fn (array $r): array => ['name' => (string) $r['name'], 'cents' => (int) $r['c'], 'qty' => (int) $r['q']], (array) $rows);
+    }
+
+    /**
+     * Sales and fulfilment KPIs since $days ago. $vendorId null = whole marketplace (admin).
+     *
+     * @return array{orders: int, cancelled: int, delivered: int, units: int, sales: int, shipping: int, commission: int, avg_ticket: int, ship_hours: ?float, late: int}
+     */
+    public function metrics(?int $vendorId, int $days, int $dispatchHours): array
+    {
+        global $wpdb;
+        $t = Installer::tables();
+        $from = gmdate('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS);
+        $lateBefore = gmdate('Y-m-d H:i:s', time() - $dispatchHours * HOUR_IN_SECONDS);
+        $vendorSql = $vendorId !== null ? $wpdb->prepare(' AND vendor_id = %d', $vendorId) : '';
+
+        $f = (array) $wpdb->get_row($wpdb->prepare(
+            "SELECT COUNT(*) AS orders,
+                    SUM(status = 'cancelled') AS cancelled,
+                    SUM(status = 'delivered') AS delivered,
+                    SUM(CASE WHEN status <> 'cancelled' THEN items_count ELSE 0 END) AS units,
+                    SUM(CASE WHEN status <> 'cancelled' THEN subtotal_cents ELSE 0 END) AS sales,
+                    SUM(CASE WHEN status <> 'cancelled' THEN shipping_cents ELSE 0 END) AS shipping,
+                    AVG(CASE WHEN shipped_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, created_at, shipped_at) END) AS ship_minutes
+             FROM {$t['fulfillments']} WHERE created_at >= %s{$vendorSql}",
+            $from
+        ), ARRAY_A);
+        $late = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$t['fulfillments']} WHERE status IN ('new', 'preparing') AND created_at < %s{$vendorSql}",
+            $lateBefore
+        ));
+        $commission = -(int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(SUM(amount_cents), 0) FROM {$t['ledger']} WHERE type = 'commission' AND created_at >= %s{$vendorSql}",
+            $from
+        ));
+        $orders = (int) ($f['orders'] ?? 0);
+        $active = $orders - (int) ($f['cancelled'] ?? 0);
+        return [
+            'orders' => $orders,
+            'cancelled' => (int) ($f['cancelled'] ?? 0),
+            'delivered' => (int) ($f['delivered'] ?? 0),
+            'units' => (int) ($f['units'] ?? 0),
+            'sales' => (int) ($f['sales'] ?? 0),
+            'shipping' => (int) ($f['shipping'] ?? 0),
+            'commission' => $commission,
+            'avg_ticket' => $active > 0 ? (int) round(((int) ($f['sales'] ?? 0)) / $active) : 0,
+            'ship_hours' => $f['ship_minutes'] !== null ? round(((float) $f['ship_minutes']) / 60, 1) : null,
+            'late' => $late,
+        ];
+    }
+
+    /** @return list<array{vendor_id: int, orders: int, sales: int}> */
+    public function topVendors(int $days, int $limit = 10): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['fulfillments'];
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT vendor_id, COUNT(*) AS orders, SUM(subtotal_cents) AS sales FROM {$table}
+             WHERE created_at >= %s AND status <> 'cancelled' GROUP BY vendor_id ORDER BY sales DESC LIMIT %d",
+            gmdate('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS),
+            $limit
+        ), ARRAY_A);
+        return array_map(static fn (array $r): array => ['vendor_id' => (int) $r['vendor_id'], 'orders' => (int) $r['orders'], 'sales' => (int) $r['sales']], (array) $rows);
+    }
+
+    /** Open fulfilments older than the dispatch promise. @return list<array{order_id: int, vendor_id: int, status: string, created_at: string}> */
+    public function lateFulfillments(int $dispatchHours, int $limit = 20): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['fulfillments'];
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT order_id, vendor_id, status, created_at FROM {$table} WHERE status IN ('new', 'preparing') AND created_at < %s ORDER BY created_at LIMIT %d",
+            gmdate('Y-m-d H:i:s', time() - $dispatchHours * HOUR_IN_SECONDS),
+            $limit
+        ), ARRAY_A);
+        return array_map(static fn (array $r): array => ['order_id' => (int) $r['order_id'], 'vendor_id' => (int) $r['vendor_id'], 'status' => (string) $r['status'], 'created_at' => (string) $r['created_at']], (array) $rows);
     }
 }

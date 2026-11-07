@@ -21,8 +21,20 @@ final class LedgerEntry
         public readonly ?int $orderItemId = null,
         public readonly ?int $commissionBps = null,
         public readonly string $note = '',
-        public readonly ?int $id = null
+        public readonly ?int $id = null,
+        public readonly ?int $payoutId = null
     ) {
+    }
+
+    /** True when this entry belongs to the money that can be paid at $cutoff. */
+    public function isPayableAt(DateTimeImmutable $cutoff): bool
+    {
+        return $this->payoutId === null && ($this->availableAt <= $cutoff || ($this->amount->isNegative() && $this->type->isImmediateDebit()));
+    }
+
+    public function withPayout(?int $payoutId): self
+    {
+        return new self($this->vendorId, $this->type, $this->amount, $this->createdAt, $this->availableAt, $this->orderId, $this->orderItemId, $this->commissionBps, $this->note, $this->id, $payoutId);
     }
 
     /** available_at of sale money while the order is not delivered yet. */

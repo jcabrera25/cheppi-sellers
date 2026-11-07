@@ -102,3 +102,15 @@
 .ch-table-edit td { padding: 8px 6px; }
 .ch-table-edit .ch-input { min-height: 40px; }
 .ch-admin__actions { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(transparent, #f0f0f1 40%); }
+
+/* Payouts, campaigns, metrics */
+.ch-inline-form { display: inline-flex; gap: 6px; align-items: center; margin: 4px 0 0; flex-wrap: wrap; }
+.ch-input--sm { min-height: 34px; padding: 4px 10px; font-size: 0.85rem; max-width: 150px; }
+.ch-admin .ch-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ch-admin .ch-actions form { margin: 0; }
+.ch-bars { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ch-bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+.ch-bars__bar { grid-column: 1 / -1; height: 8px; border-radius: 8px; background: #f0eef5; overflow: hidden; }
+.ch-bars__bar span { display: block; height: 100%; border-radius: 8px; background: var(--ch-violet); }
+.ch-chart { display: block; width: 100%; height: auto; margin-top: 12px; }
+.ch-chart__total { margin: 0; color: var(--ch-text-2); }

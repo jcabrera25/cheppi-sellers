@@ -32,7 +32,8 @@ final class BusinessRules
         public readonly array $payoutDays,
         public readonly Money $minimumPayout,
         public readonly BrandPageService $brandPage,
-        public readonly bool $moderateNewProducts = true
+        public readonly bool $moderateNewProducts = true,
+        public readonly ?Money $featuredPerDay = null
     ) {
     }
 
@@ -53,6 +54,7 @@ final class BusinessRules
             'payout_days' => [15, 31],
             'minimum_payout' => '20.00',
             'moderate_products' => true,
+            'featured_per_day' => '5.00',
             'brand_page' => [
                 'enabled' => true,
                 'design_fee' => '350.00',
@@ -168,6 +170,8 @@ final class BusinessRules
             self::int($bp['delivery_days'] ?? null, 1, 120, 'brand_page.delivery_days', $errors)
         );
 
+        $featured = self::money($data['featured_per_day'] ?? '5.00', $currency, 'featured_per_day', $errors);
+
         if ($errors !== []) {
             throw new RulesValidationException($errors);
         }
@@ -183,8 +187,15 @@ final class BusinessRules
             $payoutDays,
             $minimumPayout,
             $brandPage,
-            (bool) ($data['moderate_products'] ?? true)
+            (bool) ($data['moderate_products'] ?? true),
+            $featured
         );
+    }
+
+    /** Price per day of a paid featured product (Fase 5). */
+    public function featuredPrice(): Money
+    {
+        return $this->featuredPerDay ?? Money::ofDecimal('5.00', $this->currency);
     }
 
     /** @return array<string, mixed> */
@@ -201,6 +212,7 @@ final class BusinessRules
             'payout_days' => $this->payoutDays,
             'minimum_payout' => $this->minimumPayout->toDecimal(),
             'moderate_products' => $this->moderateNewProducts,
+            'featured_per_day' => $this->featuredPrice()->toDecimal(),
             'brand_page' => $this->brandPage->toArray(),
         ];
     }

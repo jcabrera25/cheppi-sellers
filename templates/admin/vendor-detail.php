@@ -175,6 +175,8 @@ $id = (int) $vendor->id;
                 </form>
             </section>
 
+            <?php do_action('cheppi_sellers_vendor_detail', $vendor); // extra cards: premium page, payouts ?>
+
             <section class="ch-card ch-danger">
                 <h2 class="ch-card__title"><?php esc_html_e('Eliminar vendedor', 'cheppi-sellers'); ?></h2>
                 <p class="ch-muted"><?php esc_html_e('Borra la tienda y sus documentos. La cuenta de usuario se conserva (puede seguir comprando). No se puede deshacer; si la tienda ya tiene ventas o pagos, suspéndela en lugar de eliminarla.', 'cheppi-sellers'); ?></p>

@@ -50,7 +50,9 @@ $js = $assets->url('panel.js');
                     'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::productsUrl(), $open],
                     'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), Routes::ordersUrl(), $open],
                     'envios' => ['truck', __('Envíos', 'cheppi-sellers'), Routes::shippingUrl(), $open],
-                    'pagos' => ['wallet', __('Pagos', 'cheppi-sellers'), '', false],
+                    'pagos' => ['wallet', __('Pagos', 'cheppi-sellers'), Routes::paymentsUrl(), $open],
+                    'promociones' => ['tag', __('Promociones', 'cheppi-sellers'), Routes::promotionsUrl(), $open],
+                    'metricas' => ['chart', __('Métricas', 'cheppi-sellers'), Routes::metricsUrl(), $open],
                     'mi-tienda' => ['store', __('Mi tienda', 'cheppi-sellers'), Routes::storeSettingsUrl(), $open],
                 ];
                 foreach ($items as $key => [$icon, $label, $url, $enabled]) :

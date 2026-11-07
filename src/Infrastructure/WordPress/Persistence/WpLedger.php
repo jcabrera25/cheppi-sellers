@@ -25,9 +25,9 @@ final class WpLedger implements Ledger
         $values = [];
         $args = [];
         foreach ($entries as $e) {
-            $values[] = '(%d, %s, %d, %s, ' . ($e->commissionBps === null ? 'NULL' : '%d') . ', ' . ($e->orderId === null ? 'NULL' : '%d') . ', ' . ($e->orderItemId === null ? 'NULL' : '%d') . ', %s, %s, %s)';
+            $values[] = '(%d, %s, %d, %s, ' . ($e->commissionBps === null ? 'NULL' : '%d') . ', ' . ($e->orderId === null ? 'NULL' : '%d') . ', ' . ($e->orderItemId === null ? 'NULL' : '%d') . ', ' . ($e->payoutId === null ? 'NULL' : '%d') . ', %s, %s, %s)';
             array_push($args, $e->vendorId, $e->type->value, $e->amount->cents, $e->amount->currency);
-            foreach ([$e->commissionBps, $e->orderId, $e->orderItemId] as $nullable) {
+            foreach ([$e->commissionBps, $e->orderId, $e->orderItemId, $e->payoutId] as $nullable) {
                 if ($nullable !== null) {
                     $args[] = $nullable;
                 }
@@ -36,7 +36,7 @@ final class WpLedger implements Ledger
         }
         // One INSERT for the whole order: atomic without an explicit transaction.
         $wpdb->query($wpdb->prepare(
-            "INSERT INTO {$table} (vendor_id, type, amount_cents, currency, commission_bps, order_id, order_item_id, note, created_at, available_at) VALUES " . implode(', ', $values),
+            "INSERT INTO {$table} (vendor_id, type, amount_cents, currency, commission_bps, order_id, order_item_id, payout_id, note, created_at, available_at) VALUES " . implode(', ', $values),
             ...$args
         ));
     }
@@ -80,6 +80,64 @@ final class WpLedger implements Ledger
         return new Balance(Money::ofCents((int) ($row['available'] ?? 0)), Money::ofCents((int) ($row['pending'] ?? 0)));
     }
 
+    /** SQL condition shared by every "payable at cut-off" query (same rule as LedgerEntry::isPayableAt). */
+    private static function payableWhere(): string
+    {
+        $immediate = "'" . implode("','", array_map(static fn (LedgerEntryType $t): string => $t->value, array_filter(LedgerEntryType::cases(), static fn (LedgerEntryType $t): bool => $t->isImmediateDebit()))) . "'";
+        return "payout_id IS NULL AND (available_at <= %s OR (amount_cents < 0 AND type IN ({$immediate})))";
+    }
+
+    public function vendorsWithPayable(DateTimeImmutable $cutoff): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $ids = $wpdb->get_col($wpdb->prepare("SELECT DISTINCT vendor_id FROM {$table} WHERE " . self::payableWhere(), self::toDb($cutoff)));
+        return array_map('intval', (array) $ids);
+    }
+
+    public function payable(int $vendorId, DateTimeImmutable $cutoff): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE vendor_id = %d AND " . self::payableWhere() . ' ORDER BY id', $vendorId, self::toDb($cutoff)), ARRAY_A);
+        return array_map([self::class, 'hydrate'], (array) $rows);
+    }
+
+    public function assignPayout(array $entryIds, int $payoutId): void
+    {
+        $entryIds = array_values(array_filter(array_map('intval', $entryIds)));
+        if ($entryIds === []) {
+            return;
+        }
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $in = implode(',', array_fill(0, count($entryIds), '%d'));
+        $wpdb->query($wpdb->prepare("UPDATE {$table} SET payout_id = %d WHERE payout_id IS NULL AND id IN ({$in})", $payoutId, ...$entryIds));
+    }
+
+    public function releasePayout(int $payoutId): void
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $wpdb->query($wpdb->prepare("UPDATE {$table} SET payout_id = NULL WHERE payout_id = %d AND type <> %s", $payoutId, LedgerEntryType::Payout->value));
+    }
+
+    public function forPayout(int $payoutId): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE payout_id = %d ORDER BY created_at, id", $payoutId), ARRAY_A);
+        return array_map([self::class, 'hydrate'], (array) $rows);
+    }
+
+    public function forVendor(int $vendorId, int $limit, int $offset = 0): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE vendor_id = %d ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d", $vendorId, $limit, $offset), ARRAY_A);
+        return array_map([self::class, 'hydrate'], (array) $rows);
+    }
+
     /** @param array<string, string|null> $row */
     private static function hydrate(array $row): LedgerEntry
     {
@@ -94,7 +152,8 @@ final class WpLedger implements Ledger
             $row['order_item_id'] !== null ? (int) $row['order_item_id'] : null,
             $row['commission_bps'] !== null ? (int) $row['commission_bps'] : null,
             (string) $row['note'],
-            (int) $row['id']
+            (int) $row['id'],
+            $row['payout_id'] !== null ? (int) $row['payout_id'] : null
         );
     }
 

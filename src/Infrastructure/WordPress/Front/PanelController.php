@@ -35,7 +35,12 @@ final class PanelController
         private readonly Fulfillments $fulfillments,
         private readonly Ledger $ledger,
         private readonly DeliveryZones $zones,
-        private readonly Assets $assets
+        private readonly Assets $assets,
+        private readonly \Cheppi\Sellers\Application\Payouts $payouts,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorExtras $extras,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\Campaigns $campaigns,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\VendorCoupons $coupons,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\FeaturedProducts $featured
     ) {
     }
 
@@ -76,7 +81,21 @@ final class PanelController
         match ($screen) {
             'productos' => $this->renderProducts($base),
             'producto' => $this->renderProductForm($base, (int) get_query_var(Routes::ID_VAR)),
-            'mi-tienda' => $this->renderPage('storefront', __('Mi tienda', 'cheppi-sellers'), $base, 'mi-tienda'),
+            'mi-tienda' => $this->renderPage('storefront', __('Mi tienda', 'cheppi-sellers'), $base + [
+                'premium' => $this->extras->premium((int) $vendor->id),
+                'brandPage' => $this->rules->current()->brandPage,
+            ], 'mi-tienda'),
+            'pagos' => $this->renderPage('payments', __('Pagos', 'cheppi-sellers'), $base + [
+                'balance' => $this->ledger->balance((int) $vendor->id, new DateTimeImmutable('now')),
+                'bank' => $this->extras->bank((int) $vendor->id),
+                'payouts' => $this->payouts->list(null, (int) $vendor->id, 24, 0),
+                'movements' => $this->ledger->forVendor((int) $vendor->id, 40),
+                'nextCutoff' => (new \Cheppi\Sellers\Domain\Payout\PayoutSchedule($this->rules->current()))->nextCutoff(new DateTimeImmutable('now', wp_timezone())),
+                'rules' => $this->rules->current(),
+            ], 'pagos'),
+            'promociones' => $this->renderPromotions($base),
+            'metricas' => $this->renderMetrics($base),
+            'importar' => $this->renderPage('import', __('Importar productos', 'cheppi-sellers'), $base, 'productos'),
             'pedidos' => $this->renderOrders($base),
             'pedido' => $this->renderOrder($base, (int) get_query_var(Routes::ID_VAR)),
             'envios' => $this->renderPage('shipping', __('Envíos', 'cheppi-sellers'), $base + ['zones' => $this->zones->forVendor((int) $vendor->id)], 'envios'),
@@ -128,6 +147,41 @@ final class PanelController
             'used' => $this->catalog->countForVendor($vendor->userId),
             'layout' => $layout,
         ], 'productos');
+    }
+
+    /** @param array<string, mixed> $base */
+    private function renderPromotions(array $base): never
+    {
+        /** @var Vendor $vendor */
+        $vendor = $base['vendor'];
+        $rules = $this->rules->current();
+        $now = new DateTimeImmutable('now');
+        $this->renderPage('promotions', __('Promociones', 'cheppi-sellers'), $base + [
+            'campaigns' => $this->campaigns->open($now),
+            'joined' => $this->extras->campaigns((int) $vendor->id),
+            'normalBps' => $vendor->commissionOverrideBps ?? ($rules->plan($vendor->planId)?->commissionBps ?? $rules->defaultCommissionBps),
+            'coupons' => $this->coupons->forVendor($vendor),
+            'featured' => $this->featured->forVendor($vendor),
+            'publishable' => wc_get_products(['author' => $vendor->userId, 'status' => 'publish', 'limit' => 100, 'orderby' => 'title', 'order' => 'ASC']),
+            'featuredPrice' => $rules->featuredPrice(),
+        ], 'promociones');
+    }
+
+    /** @param array<string, mixed> $base */
+    private function renderMetrics(array $base): never
+    {
+        /** @var Vendor $vendor */
+        $vendor = $base['vendor'];
+        $days = (int) ($_GET['dias'] ?? 30);
+        $days = in_array($days, [7, 30, 90], true) ? $days : 30;
+        $rules = $this->rules->current();
+        $this->renderPage('metrics', __('Métricas', 'cheppi-sellers'), $base + [
+            'days' => $days,
+            'm' => $this->stats->metrics((int) $vendor->id, $days, $rules->dispatchHours),
+            'salesByDay' => $this->stats->salesByDay((int) $vendor->id, $days),
+            'topProducts' => $this->stats->topProducts((int) $vendor->id, 8),
+            'rules' => $rules,
+        ], 'metricas');
     }
 
     /** @param array<string, mixed> $base */

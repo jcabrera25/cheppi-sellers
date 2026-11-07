@@ -11,11 +11,14 @@ use Cheppi\Sellers\Domain\Commission\CommissionResolver;
 use Cheppi\Sellers\Domain\Money\Money;
 use Cheppi\Sellers\Domain\Order\FulfillmentStatus;
 use Cheppi\Sellers\Domain\Order\SaleLine;
+use Cheppi\Sellers\Domain\Promotion\Campaign;
 use Cheppi\Sellers\Domain\Order\ShippingCharge;
 use Cheppi\Sellers\Domain\Vendor\Vendor;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 use Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier;
+use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorExtras;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
+use Cheppi\Sellers\Infrastructure\WordPress\Promotions\Campaigns;
 use Cheppi\Sellers\Infrastructure\WordPress\Shipping\VendorDeliveryMethod;
 use DateTimeImmutable;
 use WC_Order;
@@ -42,7 +45,9 @@ final class OrderSync
         private readonly RecordOrderSales $record,
         private readonly ReverseOrderSales $reverse,
         private readonly Fulfillments $fulfillments,
-        private readonly WpMailNotifier $mailer
+        private readonly WpMailNotifier $mailer,
+        private readonly Campaigns $campaigns,
+        private readonly WpVendorExtras $extras
     ) {
     }
 
@@ -139,7 +144,8 @@ final class OrderSync
     {
         $parent = $product->get_parent_id() ? wc_get_product($product->get_parent_id()) : $product;
         $categories = $parent instanceof WC_Product ? array_map('intval', $parent->get_category_ids()) : [];
-        return (new CommissionResolver($this->rules->current()))->resolve($vendor->commissionOverrideBps, $vendor->planId, $categories)->bps;
+        $normal = (new CommissionResolver($this->rules->current()))->resolve($vendor->commissionOverrideBps, $vendor->planId, $categories)->bps;
+        return Campaign::commissionFor($normal, $this->campaigns->byIds($this->extras->campaigns((int) $vendor->id)), new DateTimeImmutable('now'));
     }
 
     private static function money(float $amount): Money

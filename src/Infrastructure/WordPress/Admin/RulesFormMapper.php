@@ -65,6 +65,7 @@ final class RulesFormMapper
             'payout_days' => array_values($days),
             'minimum_payout' => self::decimal($post['minimum_payout'] ?? ''),
             'moderate_products' => !empty($post['moderate_products']),
+            'featured_per_day' => (string) ($post['featured_per_day'] ?? '5.00'),
             'brand_page' => [
                 'enabled' => !empty($brand['enabled']),
                 'design_fee' => self::decimal($brand['design_fee'] ?? ''),
@@ -100,6 +101,7 @@ final class RulesFormMapper
             'payout_days' => implode(', ', $rules->payoutDays),
             'minimum_payout' => $data['minimum_payout'],
             'moderate_products' => $rules->moderateNewProducts,
+            'featured_per_day' => $rules->featuredPrice()->toDecimal(),
             'brand_page' => $data['brand_page'],
         ];
     }
