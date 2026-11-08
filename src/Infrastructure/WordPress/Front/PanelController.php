@@ -40,7 +40,8 @@ final class PanelController
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorExtras $extras,
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\Campaigns $campaigns,
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\VendorCoupons $coupons,
-        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\FeaturedProducts $featured
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\FeaturedProducts $featured,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport $report
     ) {
     }
 
@@ -132,16 +133,19 @@ final class PanelController
         $search = sanitize_text_field(wp_unslash((string) ($_GET['buscar'] ?? '')));
         $page = max(1, absint($_GET['pagina'] ?? 1));
         $layout = self::productsLayout();
-        $result = $this->catalog->listForVendor($vendor->userId, $status, $search, $page, self::PER_PAGE);
+        $filters = \Cheppi\Sellers\Infrastructure\WordPress\Catalog\ProductListQuery::fromQuery(wp_unslash($_GET));
+        $result = $this->catalog->listForVendor($vendor->userId, $status, $search, $page, $filters->perPage, $filters);
         $rules = $this->rules->current();
 
         $this->renderPage('products', __('Productos', 'cheppi-sellers'), $base + [
             'items' => $result['items'],
             'total' => $result['total'],
             'page' => $page,
-            'pages' => (int) ceil($result['total'] / self::PER_PAGE),
+            'pages' => (int) ceil($result['total'] / $filters->perPage),
             'status' => $status,
             'search' => $search,
+            'filters' => $filters,
+            'categories' => $this->catalog->categories(),
             'counts' => $this->stats->productsByStatus($vendor->userId),
             'limit' => $rules->plan($vendor->planId)?->productLimit,
             'used' => $this->catalog->countForVendor($vendor->userId),
@@ -189,22 +193,11 @@ final class PanelController
     {
         /** @var Vendor $vendor */
         $vendor = $base['vendor'];
-        $status = FulfillmentStatus::tryFrom(sanitize_key((string) ($_GET['estado'] ?? '')));
-        $page = max(1, absint($_GET['pagina'] ?? 1));
-        $counts = $this->fulfillments->countsForVendor((int) $vendor->id);
-        $parts = $this->fulfillments->forVendor((int) $vendor->id, $status, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
-        $total = $status === null ? array_sum($counts) : ($counts[$status->value] ?? 0);
-
-        $this->renderPage('orders', __('Pedidos', 'cheppi-sellers'), $base + [
-            'parts' => $parts,
-            'orders' => array_filter(array_combine(
-                array_map(static fn ($p): int => $p->orderId, $parts),
-                array_map(static fn ($p) => wc_get_order($p->orderId), $parts)
-            ) ?: []),
-            'status' => $status,
-            'counts' => $counts,
-            'page' => $page,
-            'pages' => (int) ceil($total / self::PER_PAGE),
+        $filter = \Cheppi\Sellers\Application\OrderFilter::fromQuery(wp_unslash($_GET), (int) $vendor->id, wp_timezone());
+        $this->renderPage('orders', __('Pedidos', 'cheppi-sellers'), $base + $this->report->screen($filter, absint($_GET['pagina'] ?? 1), self::PER_PAGE) + [
+            'manage' => false,
+            'stores' => [],
+            'baseUrl' => Routes::ordersUrl(),
         ], 'pedidos');
     }
 

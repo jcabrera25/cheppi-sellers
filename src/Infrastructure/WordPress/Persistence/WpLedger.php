@@ -138,6 +138,35 @@ final class WpLedger implements Ledger
         return array_map([self::class, 'hydrate'], (array) $rows);
     }
 
+    /**
+     * Money per order part, for reports: net to the vendor (sales − commission + shipping − refunds) and commission.
+     *
+     * @param list<int> $orderIds
+     * @return array<string, array{net: int, commission: int}> keyed "orderId:vendorId"
+     */
+    public function partTotals(array $orderIds): array
+    {
+        $orderIds = array_values(array_unique(array_filter(array_map('intval', $orderIds))));
+        if ($orderIds === []) {
+            return [];
+        }
+        global $wpdb;
+        $table = Installer::tables()['ledger'];
+        $in = implode(',', array_fill(0, count($orderIds), '%d'));
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT order_id, vendor_id,
+                    SUM(CASE WHEN type IN ('sale','commission','shipping','refund') THEN amount_cents ELSE 0 END) AS net,
+                    -SUM(CASE WHEN type = 'commission' THEN amount_cents ELSE 0 END) AS commission
+             FROM {$table} WHERE order_id IN ({$in}) GROUP BY order_id, vendor_id",
+            ...$orderIds
+        ), ARRAY_A);
+        $out = [];
+        foreach ((array) $rows as $row) {
+            $out[$row['order_id'] . ':' . $row['vendor_id']] = ['net' => (int) $row['net'], 'commission' => (int) $row['commission']];
+        }
+        return $out;
+    }
+
     /** @param array<string, string|null> $row */
     private static function hydrate(array $row): LedgerEntry
     {

@@ -37,6 +37,8 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\OrdersHandler;
+use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersExport;
+use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Shortcodes;
@@ -141,7 +143,9 @@ final class Plugin
         (new Scheduler($generatePayouts, $this->rules, $featured))->register();
         (new PanelTools($this->vendors, $extras, $coupons, $campaigns, $featured, $saveProduct, $catalog, $this->notifier))->register();
 
-        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, $stats, $this->fulfillments, $this->ledger, $this->zones, $this->assets, $payouts, $extras, $campaigns, $coupons, $featured);
+        $report = new OrdersReport($this->fulfillments, $this->ledger, $this->vendors);
+        (new OrdersExport($report, $this->vendors))->register();
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, $stats, $this->fulfillments, $this->ledger, $this->zones, $this->assets, $payouts, $extras, $campaigns, $coupons, $featured, $report);
         $panel->register();
         (new StoreController($this->vendors, $this->assets))->register();
         (new ProductPublishedNotifier($this->vendors, $this->notifier))->register();
@@ -216,7 +220,8 @@ final class Plugin
                 $payoutsPage,
                 $campaignsPage,
                 $rulesPage,
-                $metricsPage
+                $metricsPage,
+                $report
             ))->register();
         }
 

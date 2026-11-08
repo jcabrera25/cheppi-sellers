@@ -6,6 +6,7 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
 use Cheppi\Sellers\Application\BusinessRulesRepository;
 use Cheppi\Sellers\Application\Fulfillments;
 use Cheppi\Sellers\Application\Ledger;
+use Cheppi\Sellers\Application\OrderFilter;
 use Cheppi\Sellers\Domain\Order\FulfillmentStatus;
 use Cheppi\Sellers\Domain\Payout\PayoutStatus;
 use Cheppi\Sellers\Domain\Vendor\Vendor;
@@ -16,7 +17,9 @@ use Cheppi\Sellers\Infrastructure\WordPress\Admin\PayoutsPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Assets;
 use Cheppi\Sellers\Infrastructure\WordPress\Capabilities;
+use Cheppi\Sellers\Infrastructure\WordPress\Catalog\ProductListQuery;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
+use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpPayouts;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 use WP_Query;
@@ -43,7 +46,8 @@ final class ManageController
         private readonly PayoutsPage $payoutsPage,
         private readonly CampaignsPage $campaignsPage,
         private readonly BusinessRulesPage $rulesPage,
-        private readonly MetricsPage $metricsPage
+        private readonly MetricsPage $metricsPage,
+        private readonly OrdersReport $report
     ) {
     }
 
@@ -124,14 +128,16 @@ final class ManageController
         $search = sanitize_text_field(wp_unslash((string) ($_GET['buscar'] ?? '')));
         $page = max(1, absint($_GET['pagina'] ?? 1));
         $vendor = $vendorId > 0 ? $this->vendors->find($vendorId) : null;
-        $query = new WP_Query([
+        $filters = ProductListQuery::fromQuery(wp_unslash($_GET));
+        $tax = $filters->taxQuery();
+        $query = new WP_Query(($tax !== [] ? ['tax_query' => $tax] : []) + [ // phpcs:ignore WordPress.DB.SlowDBQuery
             'post_type' => 'product',
             'post_status' => in_array($status, ['pending', 'publish', 'draft'], true) ? [$status] : ['pending', 'publish', 'draft', 'private'],
             'author' => $vendor?->userId ?? '',
             's' => $search,
             'orderby' => 'modified',
             'order' => 'DESC',
-            'posts_per_page' => self::PER_PAGE,
+            'posts_per_page' => $filters->perPage,
             'paged' => $page,
             'ignore_sticky_posts' => true,
         ]);
@@ -142,7 +148,7 @@ final class ManageController
         foreach ((array) $wpdb->get_results("SELECT post_status, COUNT(*) AS n FROM {$wpdb->posts} WHERE post_type = 'product' AND post_status IN ('pending','publish','draft','private') GROUP BY post_status", ARRAY_A) as $row) {
             $statusCounts[(string) $row['post_status']] = (int) $row['n'];
         }
-        $this->embed('productos', __('Productos', 'cheppi-sellers'), static function () use ($products, $owners, $status, $vendor, $search, $page, $query, $statusCounts): void {
+        $this->embed('productos', __('Productos', 'cheppi-sellers'), function () use ($products, $owners, $status, $vendor, $search, $page, $query, $statusCounts, $filters): void {
             echo View::capture('manage/products', [ // phpcs:ignore WordPress.Security.EscapeOutput
                 'products' => $products,
                 'owners' => $owners,
@@ -152,6 +158,10 @@ final class ManageController
                 'page' => $page,
                 'pages' => (int) $query->max_num_pages,
                 'counts' => $statusCounts,
+                'filters' => $filters,
+                'categories' => $this->catalog->categories(),
+                'stores' => $this->report->storeNames(),
+                'total' => (int) $query->found_posts,
             ]);
         });
     }
@@ -187,29 +197,14 @@ final class ManageController
 
     private function orders(): never
     {
-        $status = FulfillmentStatus::tryFrom(sanitize_key((string) ($_GET['estado'] ?? '')));
-        $page = max(1, absint($_GET['pagina'] ?? 1));
-        $parts = $this->fulfillments->listAll($status, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
-        $counts = $this->fulfillments->countsAll();
-        $vendors = [];
-        foreach (array_unique(array_map(static fn ($p): int => $p->vendorId, $parts)) as $vid) {
-            $vendors[$vid] = $this->vendors->find($vid);
-        }
-        $orders = [];
-        foreach ($parts as $p) {
-            $orders[$p->orderId] ??= wc_get_order($p->orderId) ?: null;
-        }
-        $total = $status === null ? array_sum($counts) : ($counts[$status->value] ?? 0);
-        $this->embed('pedidos', __('Pedidos', 'cheppi-sellers'), static function () use ($parts, $counts, $vendors, $orders, $status, $page, $total): void {
-            echo View::capture('manage/orders', [ // phpcs:ignore WordPress.Security.EscapeOutput
-                'parts' => $parts,
-                'counts' => $counts,
-                'vendors' => $vendors,
-                'orders' => array_filter($orders),
-                'status' => $status,
-                'page' => $page,
-                'pages' => (int) ceil($total / self::PER_PAGE),
-            ]);
+        $filter = OrderFilter::fromQuery(wp_unslash($_GET), null, wp_timezone());
+        $vars = $this->report->screen($filter, absint($_GET['pagina'] ?? 1), self::PER_PAGE) + [
+            'manage' => true,
+            'stores' => $this->report->storeNames(),
+            'baseUrl' => Routes::manageUrl('pedidos'),
+        ];
+        $this->embed('pedidos', __('Pedidos', 'cheppi-sellers'), static function () use ($vars): void {
+            echo View::capture('manage/orders', $vars); // phpcs:ignore WordPress.Security.EscapeOutput
         });
     }
 

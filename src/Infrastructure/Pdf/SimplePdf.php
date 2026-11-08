@@ -25,8 +25,14 @@ final class SimplePdf
     private array $pages = [];
     private string $current = '';
 
-    public function __construct(private readonly string $title = '')
+    /** Page size in points (landscape swaps them). */
+    public readonly float $width;
+    public readonly float $height;
+
+    public function __construct(private readonly string $title = '', bool $landscape = false)
     {
+        $this->width = $landscape ? self::HEIGHT : self::WIDTH;
+        $this->height = $landscape ? self::WIDTH : self::HEIGHT;
         $this->addPage();
     }
 
@@ -48,20 +54,20 @@ final class SimplePdf
         }
         $this->current .= sprintf(
             "BT %.3F %.3F %.3F rg /%s %.1F Tf %.2F %.2F Td (%s) Tj ET\n",
-            $rgb[0], $rgb[1], $rgb[2], $bold ? 'F2' : 'F1', $size, $x, self::HEIGHT - $y, $encoded
+            $rgb[0], $rgb[1], $rgb[2], $bold ? 'F2' : 'F1', $size, $x, $this->height - $y, $encoded
         );
     }
 
     /** @param array{0: float, 1: float, 2: float} $rgb */
     public function rect(float $x, float $y, float $w, float $h, array $rgb): void
     {
-        $this->current .= sprintf("%.3F %.3F %.3F rg %.2F %.2F %.2F %.2F re f\n", $rgb[0], $rgb[1], $rgb[2], $x, self::HEIGHT - $y - $h, $w, $h);
+        $this->current .= sprintf("%.3F %.3F %.3F rg %.2F %.2F %.2F %.2F re f\n", $rgb[0], $rgb[1], $rgb[2], $x, $this->height - $y - $h, $w, $h);
     }
 
     /** @param array{0: float, 1: float, 2: float} $rgb */
     public function line(float $x1, float $y1, float $x2, float $y2, array $rgb = [0.85, 0.84, 0.9], float $width = 0.6): void
     {
-        $this->current .= sprintf("%.3F %.3F %.3F RG %.2F w %.2F %.2F m %.2F %.2F l S\n", $rgb[0], $rgb[1], $rgb[2], $width, $x1, self::HEIGHT - $y1, $x2, self::HEIGHT - $y2);
+        $this->current .= sprintf("%.3F %.3F %.3F RG %.2F w %.2F %.2F m %.2F %.2F l S\n", $rgb[0], $rgb[1], $rgb[2], $width, $x1, $this->height - $y1, $x2, $this->height - $y2);
     }
 
     public static function textWidth(string $text, float $size, bool $bold = false): float
@@ -85,6 +91,38 @@ final class SimplePdf
         return $text . '…';
     }
 
+    /**
+     * Splits text into at most $maxLines lines that fit $maxWidth (the last one ends with … if cut).
+     *
+     * @return list<string>
+     */
+    public static function wrap(string $text, float $maxWidth, float $size, int $maxLines = 3): array
+    {
+        $lines = [];
+        $line = '';
+        foreach (preg_split('/\s+/', trim($text)) ?: [] as $word) {
+            $try = $line === '' ? $word : $line . ' ' . $word;
+            if (self::textWidth($try, $size) <= $maxWidth) {
+                $line = $try;
+                continue;
+            }
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+            $line = self::fit($word, $maxWidth, $size);
+            if (count($lines) === $maxLines) {
+                break;
+            }
+        }
+        if ($line !== '' && count($lines) < $maxLines) {
+            $lines[] = $line;
+        }
+        if (count($lines) === $maxLines && self::textWidth(implode(' ', $lines), $size) < self::textWidth(trim($text), $size) - 1) {
+            $lines[$maxLines - 1] = self::fit($lines[$maxLines - 1] . ' …', $maxWidth, $size);
+        }
+        return $lines === [] ? [''] : $lines;
+    }
+
     public function output(): string
     {
         $pages = $this->pages;
@@ -98,7 +136,7 @@ final class SimplePdf
             $pageId = $n++;
             $contentId = $n++;
             $kids[] = "{$pageId} 0 R";
-            $pageObjects[$pageId] = sprintf('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>', self::WIDTH, self::HEIGHT, $contentId);
+            $pageObjects[$pageId] = sprintf('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>', $this->width, $this->height, $contentId);
             $stream = gzcompress($content, 6);
             $pageObjects[$contentId] = sprintf("<< /Length %d /Filter /FlateDecode >>\nstream\n%s\nendstream", strlen($stream), $stream);
         }

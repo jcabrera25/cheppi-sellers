@@ -10,16 +10,23 @@
  * @var int $page
  * @var int $pages
  * @var array<string, int> $counts
+ * @var ProductListQuery $filters
+ * @var array<int, string> $categories
+ * @var array<int, string> $stores
+ * @var int $total
  */
 
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\ProductModeration;
+use Cheppi\Sellers\Infrastructure\WordPress\Catalog\ProductListQuery;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\View;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 
 defined('ABSPATH') || exit;
 
 $labels = ['' => __('Todos', 'cheppi-sellers'), 'pending' => __('En revisión', 'cheppi-sellers'), 'publish' => __('Publicados', 'cheppi-sellers'), 'draft' => __('Borradores', 'cheppi-sellers')];
 $base = Routes::manageUrl('productos');
-$url = static fn (array $args): string => add_query_arg(array_filter($args, static fn ($v): bool => $v !== '' && $v !== 0 && $v !== null), $base);
+$keep = $filters->toQuery();
+$url = static fn (array $args): string => add_query_arg(array_filter($args + $keep, static fn ($v): bool => $v !== '' && $v !== 0 && $v !== null), $base);
 $chip = ['publish' => 'ch-chip--success', 'pending' => 'ch-chip--warning', 'draft' => 'ch-chip--neutral', 'private' => 'ch-chip--neutral'];
 $statusLabel = ['publish' => __('Publicado', 'cheppi-sellers'), 'pending' => __('En revisión', 'cheppi-sellers'), 'draft' => __('Borrador', 'cheppi-sellers'), 'private' => __('Privado', 'cheppi-sellers')];
 ?>
@@ -29,13 +36,10 @@ $statusLabel = ['publish' => __('Publicado', 'cheppi-sellers'), 'pending' => __(
             <a class="ch-tab" href="<?php echo esc_url($url(['estado' => $value, 'tienda' => $vendor?->id, 'buscar' => $search])); ?>" <?php echo $status === $value ? 'aria-current="page"' : ''; ?>><?php echo esc_html($label); ?> <span><?php echo (int) ($value === '' ? array_sum($counts) : ($counts[$value] ?? 0)); ?></span></a>
         <?php endforeach; ?>
     </nav>
-    <form method="get" action="<?php echo esc_url($base); ?>" class="ch-search" role="search">
-        <?php if ($status !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($status); ?>"><?php endif; ?>
-        <?php if ($vendor) : ?><input type="hidden" name="tienda" value="<?php echo (int) $vendor->id; ?>"><?php endif; ?>
-        <input class="ch-input" type="search" name="buscar" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>">
-    </form>
     <a class="ch-btn ch-btn--primary" href="<?php echo esc_url(Routes::manageProductUrl(0) . ($vendor ? '?tienda=' . (int) $vendor->id : '')); ?>">+ <?php esc_html_e('Nuevo producto', 'cheppi-sellers'); ?></a>
 </div>
+<?php echo View::capture('panel/_product-filters', ['action' => $base, 'filters' => $filters, 'categories' => $categories, 'search' => $search, 'status' => $status, 'stores' => $stores, 'storeId' => (int) ($vendor?->id ?? 0)]); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+<p class="ch-muted ch-small"><?php echo esc_html(sprintf(_n('%d producto', '%d productos', $total, 'cheppi-sellers'), $total)); ?></p>
 <?php if ($vendor) : ?>
     <p class="ch-muted"><?php echo esc_html(sprintf(__('Productos de %s', 'cheppi-sellers'), $vendor->storeName)); ?> · <a href="<?php echo esc_url($url(['estado' => $status])); ?>"><?php esc_html_e('Ver todas las tiendas', 'cheppi-sellers'); ?></a></p>
 <?php endif; ?>

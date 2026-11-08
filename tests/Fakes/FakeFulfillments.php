@@ -55,4 +55,27 @@ final class FakeFulfillments implements Fulfillments
         }
         return $counts;
     }
+
+    public function search(\Cheppi\Sellers\Application\OrderFilter $filter, int $limit, int $offset): array
+    {
+        return array_slice(array_values(array_filter($this->items, static fn (Fulfillment $f): bool => self::matches($f, $filter) && ($filter->status === null || $f->status === $filter->status))), $offset, $limit);
+    }
+
+    public function countSearch(\Cheppi\Sellers\Application\OrderFilter $filter): array
+    {
+        $counts = [];
+        foreach ($this->items as $f) {
+            if (self::matches($f, $filter)) {
+                $counts[$f->status->value] = ($counts[$f->status->value] ?? 0) + 1;
+            }
+        }
+        return $counts;
+    }
+
+    private static function matches(Fulfillment $f, \Cheppi\Sellers\Application\OrderFilter $filter): bool
+    {
+        return ($filter->vendorId === null || $f->vendorId === $filter->vendorId)
+            && ($filter->from === null || $f->createdAt >= $filter->from)
+            && ($filter->to === null || $f->createdAt < $filter->to->modify('+1 day'));
+    }
 }

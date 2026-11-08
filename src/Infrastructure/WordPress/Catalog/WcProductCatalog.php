@@ -181,9 +181,10 @@ final class WcProductCatalog implements ProductCatalog
     /**
      * @return array{items: list<WC_Product>, total: int}
      */
-    public function listForVendor(int $ownerId, ?ProductStatus $status, string $search, int $page, int $perPage): array
+    public function listForVendor(int $ownerId, ?ProductStatus $status, string $search, int $page, int $perPage, ?ProductListQuery $filters = null): array
     {
-        $query = new WP_Query([
+        $tax = $filters?->taxQuery() ?? [];
+        $query = new WP_Query(($tax !== [] ? ['tax_query' => $tax] : []) + [ // phpcs:ignore WordPress.DB.SlowDBQuery
             'post_type' => 'product',
             'author' => $ownerId,
             'post_status' => $status ? [$status->value] : self::VENDOR_STATUSES,

@@ -1,5 +1,13 @@
 # Cambios
 
+## 0.9.0 — 2026-11-08
+
+- **Reporte de pedidos** en `/gestion/pedidos/` (equipo Cheppi) y `/vendedor/pedidos/` (cada tienda solo ve lo suyo):
+  - cabecera con **Imprimir** (hoja de impresión horizontal solo con la tabla), **Exportar PDF** y **Exportar Excel** (.xlsx real; CSV si el servidor no tiene ZipArchive);
+  - filtros por rango de fechas (desde/hasta), estado y — solo Cheppi — tienda; los exportes respetan los filtros;
+  - tabla por columnas: # pedido, tienda (Cheppi), productos comprados, dirección de facturación, dirección de envío (con celular), venta bruta, ganancia del vendedor (y comisión), fecha, «Ver más»;
+  - totales del filtro completo (los cancelados no suman a la venta bruta); en móvil cada pedido se ve como ficha.
+- **Filtros de productos**: buscar, categoría, tipo (simple/variable), cantidad por página (10/20/50/100) y, en gestión, tienda.
 ## 0.8.0 — 2026-11-08
 
 - **Editor de productos completo** (vendedor y equipo Cheppi), producto simple o variable:

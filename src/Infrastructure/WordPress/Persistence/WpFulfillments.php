@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Cheppi\Sellers\Infrastructure\WordPress\Persistence;
 
 use Cheppi\Sellers\Application\Fulfillments;
+use Cheppi\Sellers\Application\OrderFilter;
 use Cheppi\Sellers\Domain\Money\Money;
 use Cheppi\Sellers\Domain\Order\Fulfillment;
 use Cheppi\Sellers\Domain\Order\FulfillmentStatus;
@@ -87,6 +88,53 @@ final class WpFulfillments implements Fulfillments
         }
         wp_cache_set('counts_' . $vendorId, $counts, 'cheppi_fulfillments');
         return $counts;
+    }
+
+    public function search(OrderFilter $filter, int $limit, int $offset): array
+    {
+        global $wpdb;
+        [$where, $args] = self::where($filter, true);
+        array_push($args, $limit, $offset);
+        $table = Installer::tables()['fulfillments'];
+        return array_map([self::class, 'hydrate'], (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d", ...$args), ARRAY_A));
+    }
+
+    public function countSearch(OrderFilter $filter): array
+    {
+        global $wpdb;
+        [$where, $args] = self::where($filter, false);
+        $table = Installer::tables()['fulfillments'];
+        $sql = "SELECT status, COUNT(*) AS n FROM {$table} WHERE {$where} GROUP BY status";
+        $rows = $args === [] ? $wpdb->get_results($sql, ARRAY_A) : $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A);
+        $counts = [];
+        foreach ((array) $rows as $row) {
+            $counts[(string) $row['status']] = (int) $row['n'];
+        }
+        return $counts;
+    }
+
+    /** @return array{0: string, 1: list<int|string>} */
+    private static function where(OrderFilter $filter, bool $withStatus): array
+    {
+        $where = ['1=1'];
+        $args = [];
+        if ($filter->vendorId !== null) {
+            $where[] = 'vendor_id = %d';
+            $args[] = $filter->vendorId;
+        }
+        if ($withStatus && $filter->status !== null) {
+            $where[] = 'status = %s';
+            $args[] = $filter->status->value;
+        }
+        if ($filter->from !== null) {
+            $where[] = 'created_at >= %s';
+            $args[] = self::toDb($filter->from);
+        }
+        if ($filter->to !== null) {
+            $where[] = 'created_at < %s';
+            $args[] = self::toDb($filter->to->modify('+1 day'));
+        }
+        return [implode(' AND ', $where), $args];
     }
 
     public function listAll(?FulfillmentStatus $status, int $limit, int $offset): array

@@ -22,6 +22,12 @@ interface Fulfillments
     /** @return array<string, int> status value => count */
     public function countsForVendor(int $vendorId): array;
 
+    /** @return list<Fulfillment> newest first */
+    public function search(OrderFilter $filter, int $limit, int $offset): array;
+
+    /** @return array<string, int> status => count for the filter without its status */
+    public function countSearch(OrderFilter $filter): array;
+
     /** Every vendor (management panel). @return list<Fulfillment> newest first */
     public function listAll(?FulfillmentStatus $status, int $limit, int $offset): array;
 

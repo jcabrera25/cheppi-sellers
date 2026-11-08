@@ -12,11 +12,14 @@
  * @var ?int $limit
  * @var int $used
  * @var string $layout lista|grid
+ * @var \Cheppi\Sellers\Infrastructure\WordPress\Catalog\ProductListQuery $filters
+ * @var array<int, string> $categories
  */
 
 use Cheppi\Sellers\Domain\Catalog\ProductStatus;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Icons;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\View;
 
 defined('ABSPATH') || exit;
 
@@ -31,7 +34,8 @@ foreach (ProductStatus::cases() as $case) {
 }
 $current = $status?->value ?? '';
 $atLimit = $limit !== null && $used >= $limit;
-$url = static fn (array $args): string => add_query_arg(array_filter($args, static fn ($v): bool => $v !== '' && $v !== 1), Routes::productsUrl());
+$keep = $filters->toQuery();
+$url = static fn (array $args): string => add_query_arg(array_filter($args + $keep, static fn ($v): bool => $v !== '' && $v !== 1), Routes::productsUrl());
 ?>
 <div class="ch-toolbar">
     <nav class="ch-tabs" aria-label="<?php esc_attr_e('Filtrar productos', 'cheppi-sellers'); ?>">
@@ -44,10 +48,6 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
             <a class="ch-icon-btn" href="<?php echo esc_url($url(['estado' => $current, 'buscar' => $search, 'vista' => 'lista'])); ?>" title="<?php esc_attr_e('Lista', 'cheppi-sellers'); ?>" <?php echo $layout === 'lista' ? 'aria-current="true"' : ''; ?>><?php echo Icons::svg('list', 18); ?><span class="screen-reader-text"><?php esc_html_e('Lista', 'cheppi-sellers'); ?></span></a>
             <a class="ch-icon-btn" href="<?php echo esc_url($url(['estado' => $current, 'buscar' => $search, 'vista' => 'grid'])); ?>" title="<?php esc_attr_e('Cuadrícula', 'cheppi-sellers'); ?>" <?php echo $layout === 'grid' ? 'aria-current="true"' : ''; ?>><?php echo Icons::svg('grid', 18); ?><span class="screen-reader-text"><?php esc_html_e('Cuadrícula', 'cheppi-sellers'); ?></span></a>
         </div>
-        <form method="get" action="<?php echo esc_url(Routes::productsUrl()); ?>" role="search">
-            <?php if ($current !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($current); ?>"><?php endif; ?>
-            <input class="ch-input ch-input--pill" type="search" name="buscar" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>" aria-label="<?php esc_attr_e('Buscar producto', 'cheppi-sellers'); ?>">
-        </form>
         <a class="ch-btn ch-btn--ghost" href="<?php echo esc_url(Routes::importUrl()); ?>"><?php esc_html_e('Importar', 'cheppi-sellers'); ?></a>
         <?php if ($atLimit) : ?>
             <span class="ch-btn ch-btn--ghost" aria-disabled="true"><?php esc_html_e('Límite del plan alcanzado', 'cheppi-sellers'); ?></span>
@@ -56,6 +56,7 @@ $url = static fn (array $args): string => add_query_arg(array_filter($args, stat
         <?php endif; ?>
     </div>
 </div>
+<?php echo View::capture('panel/_product-filters', ['action' => Routes::productsUrl(), 'filters' => $filters, 'categories' => $categories, 'search' => $search, 'status' => $current]); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 
 <?php if ($limit !== null) : ?>
     <p class="ch-muted ch-meter-label"><?php echo esc_html(sprintf(__('%1$d de %2$d productos de tu plan', 'cheppi-sellers'), $used, $limit)); ?></p>

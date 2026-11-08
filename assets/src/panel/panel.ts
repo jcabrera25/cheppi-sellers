@@ -231,3 +231,8 @@ document.querySelectorAll<HTMLFormElement>('form[data-confirm]').forEach((form) 
     if (!window.confirm(form.dataset.confirm ?? '¿Continuar?')) event.preventDefault();
   });
 });
+
+// "Imprimir" on the orders screens (the print stylesheet keeps only the table).
+document.querySelectorAll<HTMLButtonElement>('[data-print]').forEach((button) => {
+  button.addEventListener('click', () => window.print());
+});
