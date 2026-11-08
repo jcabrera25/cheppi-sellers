@@ -156,8 +156,10 @@ function enhanceRegisterForm(form: HTMLFormElement): void {
 
     let response: Response;
     try {
+      // getAttribute, not form.action: the hidden <input name="action"> (needed by admin-post.php) shadows that
+      // property, which turned the URL into "[object HTMLInputElement]" and answered 404.
       // Same origin always (the page may be open on www., http or a preview domain): avoids CORS failures.
-      const target = new URL(form.action, window.location.href);
+      const target = new URL(form.getAttribute('action') ?? '', window.location.href);
       response = await fetch(target.pathname + target.search, {
         method: 'POST',
         body: new FormData(form),
