@@ -25,6 +25,18 @@ final class ProductModeration
         add_filter('the_posts', [$this, 'preloadVendors'], 10, 2);
         add_filter('post_row_actions', [$this, 'rowActions'], 10, 2);
         add_action('admin_post_' . self::ACTION, [$this, 'approve']);
+        add_action('admin_head-edit.php', [$this, 'columnStyles']);
+    }
+
+    /** WooCommerce's table gives new columns no width; without this "Vendedor" collapses to one letter per line. */
+    public function columnStyles(): void
+    {
+        if (($GLOBALS['typenow'] ?? '') !== 'product') {
+            return;
+        }
+        echo '<style>.wp-list-table .column-cheppi_vendor{width:12%;min-width:110px}.wp-list-table th.column-cheppi_vendor{white-space:nowrap}'
+            . '.column-cheppi_vendor a{display:inline-block;word-break:normal;overflow-wrap:anywhere}'
+            . '.column-cheppi_vendor .cheppi-vendor-detail{font-size:12px;color:#646970}</style>';
     }
 
     /** @param array<string, string> $columns */
@@ -61,11 +73,11 @@ final class ProductModeration
             return;
         }
         printf(
-            '<a href="%s">%s</a><br><a class="row-title-small" href="%s">%s</a>',
+            '<a href="%s"><strong>%s</strong></a><br><a class="cheppi-vendor-detail" href="%s">%s</a>',
             esc_url(admin_url('edit.php?post_type=product&author=' . $authorId)),
             esc_html($vendor->storeName),
             esc_url(VendorsPage::detailUrl((int) $vendor->id)),
-            esc_html__('Ficha', 'cheppi-sellers')
+            esc_html__('Ver ficha', 'cheppi-sellers')
         );
     }
 
