@@ -8,10 +8,11 @@ use Cheppi\Sellers\Infrastructure\Export\XlsxWriter;
 use Cheppi\Sellers\Infrastructure\Pdf\SimplePdf;
 use Cheppi\Sellers\Infrastructure\WordPress\Capabilities;
 use Cheppi\Sellers\Infrastructure\WordPress\Payouts\PayoutFiles;
+use Cheppi\Sellers\Infrastructure\WordPress\Customers\WpCustomers;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 
 /**
- * Orders as PDF (landscape table) or Excel (.xlsx), with the filters of the screen.
+ * Orders as PDF (landscape table), Excel (.xlsx) or CSV, with the filters of the screen (also one customer).
  * A vendor always gets only their own orders; the Cheppi team gets every store (or the one filtered).
  */
 final class OrdersExport
@@ -20,7 +21,8 @@ final class OrdersExport
 
     public function __construct(
         private readonly OrdersReport $report,
-        private readonly WpVendorRepository $vendors
+        private readonly WpVendorRepository $vendors,
+        private readonly WpCustomers $customers
     ) {
     }
 
@@ -49,6 +51,10 @@ final class OrdersExport
         $filter = OrderFilter::fromQuery($query, $manage ? null : (int) $vendor->id, wp_timezone());
         $rows = $this->report->rows($filter, OrdersReport::EXPORT_LIMIT, 0);
         $scope = $manage ? ($filter->vendorId ? ($this->vendors->find($filter->vendorId)?->storeName ?? '') : __('Todas las tiendas', 'cheppi-sellers')) : $vendor->storeName;
+        if ($filter->customer !== null) {
+            $customer = $this->customers->find($filter->customer, $filter->vendorId);
+            $scope = sprintf(__('Cliente %s', 'cheppi-sellers'), $customer['name'] ?? '') . ($manage && $filter->vendorId === null ? '' : ' · ' . $scope);
+        }
         $period = self::period($filter);
         $name = 'pedidos-' . sanitize_title($scope) . '-' . wp_date('Y-m-d');
 
@@ -70,7 +76,7 @@ final class OrdersExport
                 [$r['part']->status->label(), $r['customer'], implode("\n", $r['products']), $r['billing'], $r['shipping'], $r['phone'], $r['gross'] / 100, $r['commission'] / 100, $r['net'] / 100, $r['part']->tracking]
             );
         }
-        if (XlsxWriter::available()) {
+        if (($_GET['formato'] ?? '') !== 'csv' && XlsxWriter::available()) {
             $widths = array_merge([9, 16], $manage ? [22] : [], [12, 22, 40, 40, 40, 14, 13, 14, 16, 24]);
             $file = XlsxWriter::build('Pedidos', $headers, $data, $widths);
             nocache_headers();

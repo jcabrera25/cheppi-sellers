@@ -577,3 +577,31 @@ select[multiple].ch-input { min-height: 120px; padding: 6px; }
   .ch-otable a { color: inherit; text-decoration: none; }
   .ch-chip { border: 1px solid #ccc; background: none !important; }
 }
+
+/* ---------- Customers ---------- */
+.ch-list-count { margin: 0 0 var(--ch-space-3); }
+.ch-ctable { min-width: 820px; }
+.ch-ctable__mail { word-break: break-all; color: var(--ch-text-2); }
+.ch-section-title { display: flex; align-items: center; gap: 8px; margin: var(--ch-space-6) 0 var(--ch-space-3); font-family: var(--ch-font-display); font-size: 1.15rem; }
+.ch-customer { display: grid; gap: var(--ch-space-5); }
+.ch-customer__head { display: flex; align-items: center; gap: var(--ch-space-4); }
+.ch-customer__avatar {
+  flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ch-violet); color: #fff; font-family: var(--ch-font-display); font-weight: 700; font-size: 1.2rem;
+}
+.ch-customer__name { margin: 0 0 2px; font-family: var(--ch-font-display); font-size: 1.4rem; }
+.ch-customer__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ch-space-3); }
+.ch-customer__stats > div { background: var(--ch-bg); border-radius: var(--ch-radius); padding: var(--ch-space-3) var(--ch-space-4); display: grid; gap: 2px; }
+.ch-customer__stats strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ch-customer__info { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--ch-space-4) var(--ch-space-5); margin: 0; }
+.ch-customer__info dt { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ch-text-3); margin-bottom: 2px; }
+.ch-customer__info dd { margin: 0; word-break: break-word; }
+@media (max-width: 760px) {
+  .ch-customer__stats { grid-template-columns: 1fr; }
+  .ch-ctable { min-width: 0; }
+}
+@media print {
+  .ch-customer { padding: 0 !important; gap: 10px; }
+  .ch-customer__avatar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ch-section-title { margin: 10px 0 6px; }
+}

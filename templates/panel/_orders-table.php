@@ -43,20 +43,21 @@ $currentStore = $manage && $filter->vendorId ? ($stores[$filter->vendorId] ?? ''
                 $filter->status?->label() ?? '',
             ]))); ?></p>
             <p class="ch-muted ch-small"><?php echo esc_html(sprintf(
-                __('%1$d pedidos · venta bruta %2$s · comisión %3$s · ganancia %4$s', 'cheppi-sellers'),
+                _n('%1$d pedido · venta bruta %2$s · comisión %3$s · ganancia %4$s', '%1$d pedidos · venta bruta %2$s · comisión %3$s · ganancia %4$s', $sum['count'], 'cheppi-sellers'),
                 $sum['count'], $money($sum['gross']), $money($sum['commission']), $money($sum['net'])
             )); ?></p>
         </div>
         <div class="ch-actions ch-no-print">
             <button type="button" class="ch-btn ch-btn--ghost ch-btn--sm" data-print><?php echo Icons::svg('receipt', 16); ?> <?php esc_html_e('Imprimir', 'cheppi-sellers'); ?></button>
             <a class="ch-btn ch-btn--ghost ch-btn--sm" href="<?php echo esc_url(OrdersExport::url('pdf', $manage, $query)); ?>" target="_blank" rel="noopener"><?php esc_html_e('Exportar PDF', 'cheppi-sellers'); ?></a>
+            <a class="ch-btn ch-btn--ghost ch-btn--sm" href="<?php echo esc_url(OrdersExport::url('csv', $manage, $query)); ?>"><?php esc_html_e('CSV', 'cheppi-sellers'); ?></a>
             <a class="ch-btn ch-btn--secondary ch-btn--sm" href="<?php echo esc_url(OrdersExport::url('xlsx', $manage, $query)); ?>"><?php esc_html_e('Exportar Excel', 'cheppi-sellers'); ?></a>
         </div>
     </div>
     <form method="get" action="<?php echo esc_url($baseUrl); ?>" class="ch-orders-filters ch-no-print">
         <label class="ch-field"><span class="ch-field__label"><?php esc_html_e('Desde', 'cheppi-sellers'); ?></span><input class="ch-input" type="date" name="desde" value="<?php echo esc_attr($query['desde'] ?? ''); ?>"></label>
         <label class="ch-field"><span class="ch-field__label"><?php esc_html_e('Hasta', 'cheppi-sellers'); ?></span><input class="ch-input" type="date" name="hasta" value="<?php echo esc_attr($query['hasta'] ?? ''); ?>"></label>
-        <?php if ($manage) : ?>
+        <?php if ($manage && $stores !== []) : ?>
             <label class="ch-field"><span class="ch-field__label"><?php esc_html_e('Tienda', 'cheppi-sellers'); ?></span>
                 <select class="ch-input" name="tienda"><option value=""><?php esc_html_e('Todas', 'cheppi-sellers'); ?></option><?php foreach ($stores as $id => $name) : ?><option value="<?php echo (int) $id; ?>" <?php selected($filter->vendorId, $id); ?>><?php echo esc_html($name); ?></option><?php endforeach; ?></select></label>
         <?php endif; ?>

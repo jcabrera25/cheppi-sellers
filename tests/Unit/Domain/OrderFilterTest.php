@@ -37,4 +37,16 @@ final class OrderFilterTest extends TestCase
         $this->assertSame('2026-11-10', $f->to?->format('Y-m-d'));
         $this->assertSame([], (new OrderFilter())->toQuery(true));
     }
+
+    public function testCustomerKeyIsKeptAndOrderIdsRestrict(): void
+    {
+        $f = OrderFilter::fromQuery(['cliente' => 'ABCDEF0123456789'], 3, new DateTimeZone('UTC'));
+        $this->assertSame('abcdef0123456789', $f->customer);
+        $this->assertSame(['cliente' => 'abcdef0123456789'], $f->toQuery(false));
+        $this->assertSame(null, OrderFilter::fromQuery(['cliente' => 'ana@correo.pe'], null, new DateTimeZone('UTC'))->customer);
+        $resolved = $f->withOrderIds(['12', 15]);
+        $this->assertSame([12, 15], $resolved->orderIds);
+        $this->assertSame(3, $resolved->vendorId);
+        $this->assertSame('abcdef0123456789', $resolved->customer);
+    }
 }

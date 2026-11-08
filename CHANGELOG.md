@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.10.0 — 2026-11-08
+
+- **Clientes** en `/gestion/clientes/` (todas las tiendas) y `/vendedor/clientes/` (solo quienes compraron en esa tienda):
+  - lista con nombre, usuario (o «Invitado»), correo, tienda (gestión), ubicación, cantidad de pedidos, dinero gastado y último pedido; búsqueda por nombre, correo o teléfono, filtro «compró en» (gestión), orden y cantidad por página;
+  - «Ver más»: ficha con correo, nombre, apellido, teléfono, usuario, ubicación y resumen; debajo todos sus pedidos (en la tienda, solo su parte) con filtros, imprimir y exportar a **PDF, Excel y CSV**;
+  - el cliente se identifica por su correo de facturación (los invitados también cuentan); en las URLs va una clave opaca, nunca el correo.
+- Los reportes de pedidos suman un botón **CSV**.
 ## 0.9.0 — 2026-11-08
 
 - **Reporte de pedidos** en `/gestion/pedidos/` (equipo Cheppi) y `/vendedor/pedidos/` (cada tienda solo ve lo suyo):

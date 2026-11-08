@@ -6,6 +6,7 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Orders;
 use Cheppi\Sellers\Application\Fulfillments;
 use Cheppi\Sellers\Application\OrderFilter;
 use Cheppi\Sellers\Domain\Order\Fulfillment;
+use Cheppi\Sellers\Infrastructure\WordPress\Customers\WpCustomers;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpLedger;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
 use WC_Order;
@@ -22,8 +23,17 @@ final class OrdersReport
     public function __construct(
         private readonly Fulfillments $fulfillments,
         private readonly WpLedger $ledger,
-        private readonly WpVendorRepository $vendors
+        private readonly WpVendorRepository $vendors,
+        private readonly WpCustomers $customers
     ) {
+    }
+
+    /** A filter by customer becomes a filter by that customer's orders (looked up once). */
+    public function resolve(OrderFilter $filter): OrderFilter
+    {
+        return $filter->customer !== null && $filter->orderIds === null
+            ? $filter->withOrderIds($this->customers->orderIds($filter->customer, $filter->vendorId))
+            : $filter;
     }
 
     /**
@@ -31,6 +41,7 @@ final class OrdersReport
      */
     public function rows(OrderFilter $filter, int $limit, int $offset): array
     {
+        $filter = $this->resolve($filter);
         $parts = $this->fulfillments->search($filter, $limit, $offset);
         $totals = $this->ledger->partTotals(array_map(static fn (Fulfillment $p): int => $p->orderId, $parts));
         $rows = [];
@@ -63,6 +74,7 @@ final class OrdersReport
      */
     public function screen(OrderFilter $filter, int $page, int $perPage): array
     {
+        $filter = $this->resolve($filter);
         $counts = $this->fulfillments->countSearch($filter);
         $total = $filter->status === null ? array_sum($counts) : ($counts[$filter->status->value] ?? 0);
         $pages = max(1, (int) ceil($total / $perPage));
@@ -95,6 +107,7 @@ final class OrdersReport
      */
     public function totals(OrderFilter $filter): array
     {
+        $filter = $this->resolve($filter);
         $parts = $this->fulfillments->search($filter, self::EXPORT_LIMIT, 0);
         $money = $this->ledger->partTotals(array_map(static fn (Fulfillment $p): int => $p->orderId, $parts));
         $sum = ['count' => count($parts), 'gross' => 0, 'commission' => 0, 'net' => 0];

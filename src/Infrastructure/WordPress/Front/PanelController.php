@@ -41,7 +41,8 @@ final class PanelController
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\Campaigns $campaigns,
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\VendorCoupons $coupons,
         private readonly \Cheppi\Sellers\Infrastructure\WordPress\Promotions\FeaturedProducts $featured,
-        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport $report
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport $report,
+        private readonly \Cheppi\Sellers\Infrastructure\WordPress\Customers\WpCustomers $customers
     ) {
     }
 
@@ -99,6 +100,8 @@ final class PanelController
             'importar' => $this->renderPage('import', __('Importar productos', 'cheppi-sellers'), $base, 'productos'),
             'pedidos' => $this->renderOrders($base),
             'pedido' => $this->renderOrder($base, (int) get_query_var(Routes::ID_VAR)),
+            'clientes' => $this->renderPage('customers', __('Clientes', 'cheppi-sellers'), $base + CustomersScreen::listVars($this->customers, $_GET, (int) $vendor->id, false), 'clientes'),
+            'cliente' => $this->renderCustomer($base, (string) get_query_var(Routes::ID_VAR)),
             'envios' => $this->renderPage('shipping', __('Envíos', 'cheppi-sellers'), $base + ['zones' => $this->zones->forVendor((int) $vendor->id)], 'envios'),
             default => $this->renderHome($base),
         };
@@ -199,6 +202,19 @@ final class PanelController
             'stores' => [],
             'baseUrl' => Routes::ordersUrl(),
         ], 'pedidos');
+    }
+
+    /** @param array<string, mixed> $base */
+    private function renderCustomer(array $base, string $key): never
+    {
+        /** @var Vendor $vendor */
+        $vendor = $base['vendor'];
+        $vars = CustomersScreen::detailVars($this->customers, $this->report, $key, $_GET, (int) $vendor->id, false);
+        if ($vars === null) {
+            Flash::set(['type' => 'error', 'message' => __('Cliente no encontrado.', 'cheppi-sellers')]);
+            $this->redirect(Routes::customersUrl());
+        }
+        $this->renderPage('customer', $vars['customer']['name'], $base + $vars, 'clientes');
     }
 
     /** @param array<string, mixed> $base */

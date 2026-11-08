@@ -126,6 +126,14 @@ final class WpFulfillments implements Fulfillments
             $where[] = 'status = %s';
             $args[] = $filter->status->value;
         }
+        if ($filter->orderIds !== null) {
+            if ($filter->orderIds === []) {
+                $where[] = '1=0';
+            } else {
+                $where[] = 'order_id IN (' . implode(',', array_fill(0, count($filter->orderIds), '%d')) . ')';
+                array_push($args, ...$filter->orderIds);
+            }
+        }
         if ($filter->from !== null) {
             $where[] = 'created_at >= %s';
             $args[] = self::toDb($filter->from);

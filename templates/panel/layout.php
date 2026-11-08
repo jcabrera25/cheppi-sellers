@@ -57,6 +57,7 @@ $bodyClass = $bodyClass ?? '';
                     'inicio' => ['home', __('Inicio', 'cheppi-sellers'), Routes::panelUrl(), true],
                     'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::productsUrl(), $open],
                     'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), Routes::ordersUrl(), $open],
+                    'clientes' => ['users', __('Clientes', 'cheppi-sellers'), Routes::customersUrl(), $open],
                     'envios' => ['truck', __('Envíos', 'cheppi-sellers'), Routes::shippingUrl(), $open],
                     'pagos' => ['wallet', __('Pagos', 'cheppi-sellers'), Routes::paymentsUrl(), $open],
                     'promociones' => ['tag', __('Promociones', 'cheppi-sellers'), Routes::promotionsUrl(), $open],

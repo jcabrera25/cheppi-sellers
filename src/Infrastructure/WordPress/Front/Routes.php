@@ -13,6 +13,8 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
  *   /vendedor/mi-tienda/            storefront settings
  *   /vendedor/pedidos/              orders
  *   /vendedor/pedidos/<id>/         one order (the vendor's part)
+ *   /vendedor/clientes/             customers who bought from the store
+ *   /vendedor/clientes/<key>/       one customer and their orders with the store
  *   /vendedor/envios/               delivery zones and rates
  *   /vendedor/pagos/                balance, bank account, payouts and statements
  *   /vendedor/promociones/          coupons, campaigns, featured products
@@ -46,6 +48,8 @@ final class Routes
         add_rewrite_rule('^' . self::BASE . '/mi-tienda/?$', $panel . 'mi-tienda', 'top');
         add_rewrite_rule('^' . self::BASE . '/pedidos/?$', $panel . 'pedidos', 'top');
         add_rewrite_rule('^' . self::BASE . '/pedidos/([0-9]+)/?$', $panel . 'pedido&' . self::ID_VAR . '=$matches[1]', 'top');
+        add_rewrite_rule('^' . self::BASE . '/clientes/?$', $panel . 'clientes', 'top');
+        add_rewrite_rule('^' . self::BASE . '/clientes/([a-f0-9]{16})/?$', $panel . 'cliente&' . self::ID_VAR . '=$matches[1]', 'top');
         add_rewrite_rule('^' . self::BASE . '/envios/?$', $panel . 'envios', 'top');
         add_rewrite_rule('^' . self::BASE . '/pagos/?$', $panel . 'pagos', 'top');
         add_rewrite_rule('^' . self::BASE . '/promociones/?$', $panel . 'promociones', 'top');
@@ -55,6 +59,7 @@ final class Routes
         $manage = 'index.php?' . self::MANAGE_VAR . '=';
         add_rewrite_rule('^' . self::MANAGE_BASE . '/?$', $manage . 'inicio', 'top');
         add_rewrite_rule('^' . self::MANAGE_BASE . '/([a-z-]+)/?$', $manage . '$matches[1]', 'top');
+        add_rewrite_rule('^' . self::MANAGE_BASE . '/clientes/([a-f0-9]{16})/?$', $manage . 'clientes&' . self::ID_VAR . '=$matches[1]', 'top');
         add_rewrite_rule('^' . self::MANAGE_BASE . '/([a-z-]+)/([0-9]+|nueva|nuevo)/?$', $manage . '$matches[1]&' . self::ID_VAR . '=$matches[2]', 'top');
         add_rewrite_rule('^' . self::BRAND_BASE . '/([a-z0-9-]+)/?$', 'index.php?' . self::BRAND_VAR . '=$matches[1]', 'top');
         // Store URLs resolve to the "Tiendas" page so themes render them like any page.
@@ -110,6 +115,21 @@ final class Routes
     public static function orderUrl(int $orderId): string
     {
         return self::panelUrl('pedidos/' . $orderId);
+    }
+
+    public static function customersUrl(): string
+    {
+        return self::panelUrl('clientes');
+    }
+
+    public static function customerUrl(string $key): string
+    {
+        return self::panelUrl('clientes/' . $key);
+    }
+
+    public static function manageCustomerUrl(string $key): string
+    {
+        return self::manageUrl('clientes/' . $key);
     }
 
     public static function shippingUrl(): string

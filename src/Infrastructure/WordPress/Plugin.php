@@ -37,6 +37,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\OrdersHandler;
+use Cheppi\Sellers\Infrastructure\WordPress\Customers\WpCustomers;
 use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersExport;
 use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelHandler;
@@ -143,9 +144,10 @@ final class Plugin
         (new Scheduler($generatePayouts, $this->rules, $featured))->register();
         (new PanelTools($this->vendors, $extras, $coupons, $campaigns, $featured, $saveProduct, $catalog, $this->notifier))->register();
 
-        $report = new OrdersReport($this->fulfillments, $this->ledger, $this->vendors);
-        (new OrdersExport($report, $this->vendors))->register();
-        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, $stats, $this->fulfillments, $this->ledger, $this->zones, $this->assets, $payouts, $extras, $campaigns, $coupons, $featured, $report);
+        $customers = new WpCustomers();
+        $report = new OrdersReport($this->fulfillments, $this->ledger, $this->vendors, $customers);
+        (new OrdersExport($report, $this->vendors, $customers))->register();
+        $panel = new PanelController($this->vendors, $this->documents, $this->rules, $catalog, $stats, $this->fulfillments, $this->ledger, $this->zones, $this->assets, $payouts, $extras, $campaigns, $coupons, $featured, $report, $customers);
         $panel->register();
         (new StoreController($this->vendors, $this->assets))->register();
         (new ProductPublishedNotifier($this->vendors, $this->notifier))->register();
@@ -221,7 +223,8 @@ final class Plugin
                 $campaignsPage,
                 $rulesPage,
                 $metricsPage,
-                $report
+                $report,
+                $customers
             ))->register();
         }
 

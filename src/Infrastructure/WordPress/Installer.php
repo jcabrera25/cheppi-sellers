@@ -11,7 +11,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpBusinessRulesRepositor
  */
 final class Installer
 {
-    public const DB_VERSION = '5';
+    public const DB_VERSION = '6'; // 6: new routes (customers) need a rewrite flush
     public const DB_VERSION_OPTION = 'cheppi_sellers_db_version';
     public const VENDOR_ROLE = 'cheppi_vendor';
 

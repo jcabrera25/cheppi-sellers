@@ -75,6 +75,7 @@ final class FakeFulfillments implements Fulfillments
     private static function matches(Fulfillment $f, \Cheppi\Sellers\Application\OrderFilter $filter): bool
     {
         return ($filter->vendorId === null || $f->vendorId === $filter->vendorId)
+            && ($filter->orderIds === null || in_array($f->orderId, $filter->orderIds, true))
             && ($filter->from === null || $f->createdAt >= $filter->from)
             && ($filter->to === null || $f->createdAt < $filter->to->modify('+1 day'));
     }

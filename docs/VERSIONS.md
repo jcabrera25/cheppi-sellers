@@ -2,6 +2,7 @@
 
 | Versión | Fecha | Fase | Dónde | Notas |
 | --- | --- | --- | --- | --- |
+| 0.10.0 | 2026-11-08 | Clientes | cheppimarket.ccrea.pe | Registro de clientes para Cheppi y para cada tienda, con ficha y pedidos exportables (PDF, Excel, CSV). |
 | 0.9.0 | 2026-11-08 | Reportes | cheppimarket.ccrea.pe | Pedidos con filtros de fechas/tienda, imprimir, PDF y Excel; filtros de productos. |
 | 0.8.0 | 2026-11-08 | Editor completo y gestión | cheppimarket.ccrea.pe | Editor de productos con todas las opciones; panel /gestion/ para el equipo Cheppi. |
 | 0.7.0 | 2026-11-07 | 5 · Crecimiento | cheppimarket.ccrea.pe | Campañas, cupones, destacados, métricas, CSV, páginas premium. |

@@ -19,6 +19,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Assets;
 use Cheppi\Sellers\Infrastructure\WordPress\Capabilities;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\ProductListQuery;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
+use Cheppi\Sellers\Infrastructure\WordPress\Customers\WpCustomers;
 use Cheppi\Sellers\Infrastructure\WordPress\Orders\OrdersReport;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpPayouts;
 use Cheppi\Sellers\Infrastructure\WordPress\Persistence\WpVendorRepository;
@@ -47,7 +48,8 @@ final class ManageController
         private readonly CampaignsPage $campaignsPage,
         private readonly BusinessRulesPage $rulesPage,
         private readonly MetricsPage $metricsPage,
-        private readonly OrdersReport $report
+        private readonly OrdersReport $report,
+        private readonly WpCustomers $customers
     ) {
     }
 
@@ -82,6 +84,7 @@ final class ManageController
             'tiendas' => $this->stores($id),
             'productos' => $this->products($id),
             'pedidos' => $id !== '' ? $this->order((int) $id) : $this->orders(),
+            'clientes' => $id !== '' ? $this->customer($id) : $this->customerList(),
             'liquidaciones' => $this->embed('liquidaciones', __('Liquidaciones', 'cheppi-sellers'), fn () => $this->payoutsPage->render()),
             'campanas' => $this->embed('campanas', __('Campañas', 'cheppi-sellers'), fn () => $this->campaignsPage->render()),
             'reglas' => $this->embed('reglas', __('Reglas del negocio', 'cheppi-sellers'), fn () => $this->rulesPage->render()),
@@ -208,6 +211,28 @@ final class ManageController
         });
     }
 
+    private function customerList(): never
+    {
+        $vars = ['stores' => $this->report->storeNames()] + CustomersScreen::listVars($this->customers, $_GET, null, true);
+        $this->embed('clientes', __('Clientes', 'cheppi-sellers'), static function () use ($vars): void {
+            echo View::capture('panel/customers', $vars); // phpcs:ignore WordPress.Security.EscapeOutput
+        });
+    }
+
+    private function customer(string $key): never
+    {
+        $vars = CustomersScreen::detailVars($this->customers, $this->report, $key, $_GET, null, true);
+        if ($vars === null) {
+            Flash::set(['type' => 'error', 'message' => __('Cliente no encontrado.', 'cheppi-sellers')]);
+            wp_safe_redirect(Routes::manageUrl('clientes'));
+            exit;
+        }
+        $vars['stores'] = $this->report->storeNames();
+        $this->embed('clientes', $vars['customer']['name'], static function () use ($vars): void {
+            echo View::capture('panel/customer', $vars); // phpcs:ignore WordPress.Security.EscapeOutput
+        });
+    }
+
     private function order(int $orderId): never
     {
         $order = wc_get_order($orderId);
@@ -274,6 +299,7 @@ final class ManageController
                 'tiendas' => ['store', __('Tiendas', 'cheppi-sellers'), Routes::manageUrl('tiendas'), true],
                 'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::manageUrl('productos'), true],
                 'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), Routes::manageUrl('pedidos'), true],
+                'clientes' => ['users', __('Clientes', 'cheppi-sellers'), Routes::manageUrl('clientes'), true],
                 'liquidaciones' => ['wallet', __('Liquidaciones', 'cheppi-sellers'), Routes::manageUrl('liquidaciones'), true],
                 'campanas' => ['tag', __('Campañas', 'cheppi-sellers'), Routes::manageUrl('campanas'), true],
                 'reglas' => ['chart', __('Reglas', 'cheppi-sellers'), Routes::manageUrl('reglas'), true],
