@@ -147,14 +147,42 @@ function enhanceRegisterForm(form: HTMLFormElement): void {
     }
     if (formError) formError.hidden = true;
 
+    const showGeneral = (message: string): void => {
+      if (!formError) return;
+      formError.hidden = false;
+      formError.querySelector('p')!.textContent = message;
+      formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    let response: Response;
     try {
-      const response = await fetch(form.action, {
+      // Same origin always (the page may be open on www., http or a preview domain): avoids CORS failures.
+      const target = new URL(form.action, window.location.href);
+      response = await fetch(target.pathname + target.search, {
         method: 'POST',
         body: new FormData(form),
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       });
-      const result = (await response.json()) as { ok: boolean; redirect?: string; errors?: Record<string, string> };
+    } catch {
+      showGeneral('No pudimos conectar con Cheppi. Revisa tu internet e inténtalo otra vez.');
+      resetButton();
+      return;
+    }
+
+    try {
+      let result: { ok: boolean; redirect?: string; errors?: Record<string, string> };
+      try {
+        result = (await response.json()) as typeof result;
+      } catch {
+        // The server answered with something that is not our JSON (firewall, timeout, PHP error page).
+        showGeneral(
+          response.status === 413
+            ? 'Tus archivos pesan demasiado. Sube cada documento de menos de 5 MB.'
+            : `No pudimos procesar tu solicitud (error ${response.status}). Inténtalo de nuevo en unos minutos; si se repite, escríbenos.`,
+        );
+        return;
+      }
       if (result.ok && result.redirect) {
         window.location.assign(result.redirect);
         return;
@@ -169,12 +197,11 @@ function enhanceRegisterForm(form: HTMLFormElement): void {
       const errorStep = steps.findIndex((s) => Object.keys(errors).some((f) => s.querySelector(`[data-error-for="${f}"]`)));
       if (errorStep >= 0) show(errorStep);
       else formError?.scrollIntoView({ behavior: 'smooth' });
-    } catch {
-      if (formError) {
-        formError.hidden = false;
-        formError.querySelector('p')!.textContent = 'No hay conexión. Revisa tu internet e inténtalo otra vez.';
-      }
     } finally {
+      resetButton();
+    }
+
+    function resetButton(): void {
       button?.removeAttribute('aria-busy');
       if (button) {
         button.disabled = false;

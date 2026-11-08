@@ -44,7 +44,7 @@ $hero = match ($status) {
 <?php if ($notice === 'solicitud' || $notice === 'documentos') : ?>
     <div class="ch-alert ch-alert--success" role="status" style="margin-bottom:16px">
         <?php echo Icons::svg('check'); ?>
-        <p><?php echo esc_html($notice === 'solicitud' ? __('¡Listo! Recibimos tu solicitud.', 'cheppi-sellers') : __('Recibimos tus documentos. Tu solicitud volvió a revisión.', 'cheppi-sellers')); ?></p>
+        <p><?php echo esc_html($notice === 'solicitud' ? __('¡Listo! Recibimos tu solicitud. La revisaremos en un máximo de 2 días hábiles y te avisaremos por correo cuando tu tienda esté aprobada.', 'cheppi-sellers') : __('Recibimos tus documentos. Tu solicitud volvió a revisión.', 'cheppi-sellers')); ?></p>
     </div>
 <?php endif; ?>
 

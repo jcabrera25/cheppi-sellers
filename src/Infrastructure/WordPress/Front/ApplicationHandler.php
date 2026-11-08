@@ -11,6 +11,7 @@ use Cheppi\Sellers\Domain\Vendor\Ruc;
 use Cheppi\Sellers\Domain\Vendor\VendorApplication;
 use Cheppi\Sellers\Domain\Vendor\VendorValidationException;
 use Cheppi\Sellers\Infrastructure\WordPress\Accounts;
+use Cheppi\Sellers\Infrastructure\WordPress\ErrorLog;
 use Cheppi\Sellers\Infrastructure\WordPress\Installer;
 use Cheppi\Sellers\Infrastructure\WordPress\RequestFiles;
 use WP_Error;
@@ -41,6 +42,36 @@ final class ApplicationHandler
     }
 
     public function apply(): void
+    {
+        // Anything printed by PHP notices or other plugins would break the JSON answer: buffer and drop it.
+        ob_start();
+        // A fatal error must still answer JSON with a reference code, never a blank page or HTML.
+        register_shutdown_function(static function (): void {
+            $error = error_get_last();
+            if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true) && self::wantsJson() && !headers_sent()) {
+                $code = ErrorLog::record($error['message'] . ' in ' . $error['file'] . ':' . $error['line'], 'apply(fatal)');
+                while (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+                http_response_code(500);
+                header('Content-Type: application/json; charset=utf-8');
+                echo wp_json_encode(['ok' => false, 'errors' => ['form' => self::problemMessage($code)]]);
+            }
+        });
+        try {
+            $this->doApply();
+        } catch (\Throwable $e) {
+            $code = ErrorLog::record($e, 'apply');
+            $this->fail(['form' => self::problemMessage($code)], self::textFields(wp_unslash($_POST), ['full_name', 'email', 'store_name', 'category', 'ruc', 'phone', 'legal_name', 'district', 'instagram', 'website']));
+        }
+    }
+
+    private static function problemMessage(string $code): string
+    {
+        return sprintf(__('Tuvimos un problema al crear tu tienda. Inténtalo de nuevo en unos minutos; si se repite, escríbenos con el código %s.', 'cheppi-sellers'), $code);
+    }
+
+    private function doApply(): void
     {
         PanelController::sendNoCacheHeaders();
         $post = wp_unslash($_POST);
@@ -163,6 +194,16 @@ final class ApplicationHandler
         return $out;
     }
 
+    private static function discardOutput(): void
+    {
+        while (ob_get_level() > 0) {
+            $stray = (string) ob_get_clean();
+            if (trim($stray) !== '') {
+                ErrorLog::record('Salida inesperada: ' . mb_substr(wp_strip_all_tags($stray), 0, 300), 'apply(output)');
+            }
+        }
+    }
+
     private static function wantsJson(): bool
     {
         return isset($_SERVER['HTTP_ACCEPT']) && str_contains((string) $_SERVER['HTTP_ACCEPT'], 'application/json');
@@ -174,6 +215,7 @@ final class ApplicationHandler
      */
     private function fail(array $errors, array $values): never
     {
+        self::discardOutput();
         if (self::wantsJson()) {
             wp_send_json(['ok' => false, 'errors' => $errors], 422);
         }
@@ -183,6 +225,7 @@ final class ApplicationHandler
 
     private function succeed(string $redirect): never
     {
+        self::discardOutput();
         if (self::wantsJson()) {
             wp_send_json(['ok' => true, 'redirect' => $redirect]);
         }

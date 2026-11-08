@@ -30,13 +30,9 @@ final class RequestFiles
 
     private static function detectMime(string $path): string
     {
-        if (function_exists('finfo_open')) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = $finfo ? (string) finfo_file($finfo, $path) : '';
-            if ($finfo) {
-                finfo_close($finfo);
-            }
-            return $mime;
+        if (class_exists(\finfo::class)) {
+            // finfo objects free themselves; finfo_close() is deprecated since PHP 8.5.
+            return (string) (new \finfo(FILEINFO_MIME_TYPE))->file($path);
         }
         return (string) (wp_get_image_mime($path) ?: '');
     }
