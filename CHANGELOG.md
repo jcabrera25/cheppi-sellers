@@ -1,5 +1,20 @@
 # Cambios
 
+## 0.8.0 — 2026-11-08
+
+- **Editor de productos completo** (vendedor y equipo Cheppi), producto simple o variable:
+  - descripción corta y larga con editor ligero (negrita, cursiva, listas, enlaces; HTML limpiado en el servidor);
+  - varias categorías, marcas de productos, etiquetas;
+  - precio, oferta y oferta programada (desde/hasta), producto virtual;
+  - inventario: SKU, gestionar stock, cantidad, reservas, aviso de stock bajo, estado del inventario, vendido individualmente;
+  - envío: peso y medidas;
+  - atributos (hasta 5) visibles en la ficha o usados para variaciones;
+  - variaciones con «Generar variaciones» (todas las combinaciones), precio/stock para todas, y por variación: activa, precio, oferta, SKU, stock o estado, peso, foto y descripción (hasta 60);
+  - ventas dirigidas, ventas cruzadas y nota de compra.
+  El código del editor se carga solo en esa pantalla (6,7 KB).
+- **Panel de gestión de Cheppi** en `/gestion/` (fuera de wp-admin, mismo diseño del panel de vendedor): inicio con pendientes y métricas, tiendas (revisar, aprobar, condiciones, documentos, página premium, alta manual), todos los productos (aprobar, devolver con motivo por correo, editar con el editor completo para cualquier tienda, crear para una tienda), todos los pedidos (mover el estado de cualquier tienda), liquidaciones, campañas y reglas. Las mismas pantallas siguen disponibles en wp-admin. Acceso solo para administradores; enlace «Gestión Cheppi» en la barra superior.
+- Correos al admin ahora enlazan al panel de gestión.
+
 ## 0.7.0 — 2026-11-07
 
 Fase 5: promociones, métricas, carga masiva y páginas de marca premium.

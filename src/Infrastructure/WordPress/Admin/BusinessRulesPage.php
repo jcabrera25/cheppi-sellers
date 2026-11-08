@@ -99,7 +99,7 @@ final class BusinessRulesPage
             set_transient($this->flashKey(), ['errors' => $e->errors, 'form' => $form], 300);
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=' . self::SLUG));
+        wp_safe_redirect(\Cheppi\Sellers\Infrastructure\WordPress\Front\ManageContext::url(self::SLUG));
         exit;
     }
 

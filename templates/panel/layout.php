@@ -22,6 +22,12 @@ defined('ABSPATH') || exit;
 $flash = $flash ?? [];
 $css = $assets->url('panel.css');
 $js = $assets->url('panel.js');
+$extraCss = $extraCss ?? [];   // management panel: admin.css
+$extraJs = $extraJs ?? [];
+$navItems = $navItems ?? null; // [key => [icon, label, url, enabled]]; null = vendor menu
+$footItems = $footItems ?? null;
+$userLabel = $userLabel ?? null;
+$bodyClass = $bodyClass ?? '';
 ?><!doctype html>
 <html <?php language_attributes(); ?>>
 <head>
@@ -34,10 +40,12 @@ $js = $assets->url('panel.js');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
     <?php if ($css) : ?><link rel="stylesheet" href="<?php echo esc_url($css); ?>"><?php endif; ?>
+    <?php foreach ($extraCss as $file) : ?><link rel="stylesheet" href="<?php echo esc_url((string) $assets->url($file)); ?>"><?php endforeach; ?>
     <?php if ($js) : ?><script type="module" src="<?php echo esc_url($js); ?>"></script><?php endif; ?>
+    <?php foreach ($extraJs as $file) : ?><script type="module" src="<?php echo esc_url((string) $assets->url($file)); ?>"></script><?php endforeach; ?>
     <?php wp_site_icon(); ?>
 </head>
-<body class="ch-app ch-view-<?php echo esc_attr($view); ?>">
+<body class="ch-app ch-view-<?php echo esc_attr($view); ?> <?php echo esc_attr($bodyClass); ?>">
 <?php if ($withShell) : ?>
     <div class="ch-shell">
         <aside class="ch-sidebar" aria-label="<?php esc_attr_e('Menú del panel', 'cheppi-sellers'); ?>">
@@ -45,7 +53,7 @@ $js = $assets->url('panel.js');
             <nav class="ch-nav">
                 <?php
                 $open = $vendor !== null && $vendor->isPublic();
-                $items = [
+                $items = $navItems ?? [
                     'inicio' => ['home', __('Inicio', 'cheppi-sellers'), Routes::panelUrl(), true],
                     'productos' => ['box', __('Productos', 'cheppi-sellers'), Routes::productsUrl(), $open],
                     'pedidos' => ['receipt', __('Pedidos', 'cheppi-sellers'), Routes::ordersUrl(), $open],
@@ -64,18 +72,23 @@ $js = $assets->url('panel.js');
                 endforeach; ?>
             </nav>
             <div class="ch-sidebar__foot">
-                <?php if ($vendor !== null && $vendor->isPublic()) : ?>
+                <?php foreach ($footItems ?? [] as [$icon, $label, $url]) : ?>
+                    <a class="ch-nav__link" href="<?php echo esc_url($url); ?>"><?php echo Icons::svg($icon); ?><span><?php echo esc_html($label); ?></span></a>
+                <?php endforeach; ?>
+                <?php if ($footItems === null) : ?>
+<?php if ($vendor !== null && $vendor->isPublic()) : ?>
                     <a class="ch-nav__link" href="<?php echo esc_url(Routes::storeUrl($vendor->storeSlug)); ?>" target="_blank" rel="noopener"><?php echo Icons::svg('store'); ?><span><?php esc_html_e('Ver mi tienda', 'cheppi-sellers'); ?></span></a>
                 <?php endif; ?>
                 <a class="ch-nav__link" href="<?php echo esc_url('mailto:' . get_option('admin_email')); ?>"><?php echo Icons::svg('help'); ?><span><?php esc_html_e('Ayuda', 'cheppi-sellers'); ?></span></a>
                 <a class="ch-nav__link" href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>"><?php echo Icons::svg('logout'); ?><span><?php esc_html_e('Salir', 'cheppi-sellers'); ?></span></a>
+                <?php endif; ?>
             </div>
         </aside>
         <main class="ch-main" id="contenido">
             <header class="ch-topbar">
                 <h1><?php echo esc_html($title); ?></h1>
                 <div class="ch-user">
-                    <span><?php echo esc_html($vendor ? $vendor->storeName : $user->display_name); ?></span>
+                    <span><?php echo esc_html($userLabel ?? ($vendor ? $vendor->storeName : $user->display_name)); ?></span>
                     <span class="ch-user__avatar" aria-hidden="true"><?php echo esc_html(PanelController::initials($user, $vendor)); ?></span>
                 </div>
             </header>

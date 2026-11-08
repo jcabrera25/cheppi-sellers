@@ -76,6 +76,19 @@ final class WpMailNotifier implements VendorNotifier
         );
     }
 
+    public function productNeedsChanges(Vendor $vendor, string $productName, string $reason, string $url): void
+    {
+        $this->toVendor(
+            $vendor,
+            'Tu producto necesita cambios',
+            sprintf('Revisamos <strong>%s</strong> y lo dejamos como borrador para que lo ajustes.', esc_html($productName))
+                . ($reason !== '' ? '<p style="margin:16px 0;padding:12px 16px;background:#F1ECFF;border-radius:10px;">' . nl2br(esc_html($reason)) . '</p>' : '')
+                . 'Cuando lo corrijas, envíalo otra vez a revisión.',
+            'Editar producto',
+            $url
+        );
+    }
+
     public function payoutPaid(Vendor $vendor, string $amount, string $reference): void
     {
         $this->toVendor(

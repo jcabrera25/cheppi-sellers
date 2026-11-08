@@ -25,12 +25,13 @@ final class SaveVendorProduct
 
     /**
      * @param array<string, mixed> $input
+     * @param bool $byAdmin a Cheppi admin saving for the vendor: publishes without moderation
      * @param list<UploadedFile> $newImages
      * @param list<int> $removeImageIds
      * @return array{id: int, status: ProductStatus}
      * @throws ProductValidationException
      */
-    public function __invoke(int $userId, ?int $productId, array $input, array $newImages, array $removeImageIds, bool $saveAsDraft): array
+    public function __invoke(int $userId, ?int $productId, array $input, array $newImages, array $removeImageIds, bool $saveAsDraft, bool $byAdmin = false): array
     {
         $vendor = $this->vendors->findByUserId($userId);
         if ($vendor === null || $vendor->status !== VendorStatus::Approved) {
@@ -71,7 +72,7 @@ final class SaveVendorProduct
         }
 
         try {
-            $draft = ProductDraft::fromArray($input, array_keys($this->catalog->categories()));
+            $draft = ProductDraft::fromArray($input, $this->catalog->choices($userId, $productId));
         } catch (ProductValidationException $e) {
             throw new ProductValidationException($errors + $e->errors);
         }
@@ -79,7 +80,8 @@ final class SaveVendorProduct
             throw new ProductValidationException($errors);
         }
 
-        $status = ProductStatus::afterSave($current, $saveAsDraft, $rules);
+        // Cheppi's own team publishes directly; vendors go through moderation when it is on.
+        $status = $byAdmin && !$saveAsDraft ? ProductStatus::Published : ProductStatus::afterSave($current, $saveAsDraft, $rules);
         $id = $this->catalog->save($userId, $productId, $draft, $status, $newImages, $removeImageIds);
         return ['id' => $id, 'status' => $status];
     }

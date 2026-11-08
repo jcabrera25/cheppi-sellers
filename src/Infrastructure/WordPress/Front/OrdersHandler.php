@@ -42,7 +42,9 @@ final class OrdersHandler
     {
         $orderId = absint($_POST['order_id'] ?? 0);
         check_admin_referer(self::UPDATE_ORDER . $orderId);
-        $vendor = $this->vendor();
+        // A Cheppi admin can move any vendor's part from the management panel.
+        $asAdmin = !empty($_POST['vendor_id']) && current_user_can(\Cheppi\Sellers\Infrastructure\WordPress\Capabilities::MANAGE);
+        $vendor = $asAdmin ? ($this->vendors->find(absint($_POST['vendor_id'])) ?? $this->vendor()) : $this->vendor();
         $next = FulfillmentStatus::tryFrom(sanitize_key((string) ($_POST['status'] ?? '')));
         $tracking = sanitize_text_field(wp_unslash((string) ($_POST['tracking'] ?? '')));
         $before = $this->fulfillments->find($orderId, (int) $vendor->id);
@@ -57,7 +59,7 @@ final class OrdersHandler
         } catch (DomainException $e) {
             Flash::set(['type' => 'error', 'message' => $e->getMessage()]);
         }
-        wp_safe_redirect(Routes::orderUrl($orderId));
+        wp_safe_redirect($asAdmin ? Routes::manageOrderUrl($orderId) : Routes::orderUrl($orderId));
         exit;
     }
 

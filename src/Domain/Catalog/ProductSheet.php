@@ -103,17 +103,17 @@ final class ProductSheet
                 break;
             }
         }
+        $stock = trim($data['stock'] ?? '');
         return [
             'type' => 'simple',
             'name' => $data['name'] ?? '',
             'description' => $data['description'] ?? '',
-            'category' => $category,
+            'categories' => $category !== '' ? [$category] : [],
             'price' => str_replace(',', '.', $data['price'] ?? ''),
             'sale_price' => str_replace(',', '.', $data['sale_price'] ?? ''),
             'sku' => $data['sku'] ?? '',
-            'stock' => $data['stock'] ?? '',
-            'attribute_name' => '',
-            'variations' => [],
+            'manage_stock' => $stock !== '' ? '1' : '',
+            'stock' => $stock,
         ];
     }
 }

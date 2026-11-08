@@ -18,7 +18,7 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: 'chunks/[name].js',
+        chunkFileNames: 'chunks/[name]-[hash].js', // loaded by an entry that is already cache-busted
         assetFileNames: '[name][extname]',
       },
     },

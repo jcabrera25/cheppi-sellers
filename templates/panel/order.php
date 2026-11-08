@@ -7,6 +7,7 @@
  * @var WC_Order $order
  * @var array<int, WC_Order_Item_Product> $items
  * @var list<\Cheppi\Sellers\Domain\Ledger\LedgerEntry> $entries
+ * @var int $adminVendorId set when shown in the management panel (one block per vendor)
  */
 
 use Cheppi\Sellers\Domain\Ledger\LedgerEntryType;
@@ -43,7 +44,8 @@ $name = trim(($order->get_shipping_first_name() ?: $order->get_billing_first_nam
 $next = $part->status->next();
 $whatsapp = preg_replace('/\D+/', '', (string) $phone);
 ?>
-<p><a class="ch-back" href="<?php echo esc_url(Routes::ordersUrl()); ?>">← <?php esc_html_e('Pedidos', 'cheppi-sellers'); ?></a></p>
+<?php $adminVendorId = (int) ($adminVendorId ?? 0); ?>
+<?php if ($adminVendorId === 0) : ?><p><a class="ch-back" href="<?php echo esc_url(Routes::ordersUrl()); ?>">← <?php esc_html_e('Pedidos', 'cheppi-sellers'); ?></a></p><?php endif; ?>
 <div class="ch-grid ch-grid--2">
     <div class="ch-grid">
         <section class="ch-card">
@@ -96,6 +98,7 @@ $whatsapp = preg_replace('/\D+/', '', (string) $phone);
                     <input type="hidden" name="action" value="<?php echo esc_attr(OrdersHandler::UPDATE_ORDER); ?>">
                     <input type="hidden" name="order_id" value="<?php echo (int) $part->orderId; ?>">
                     <?php wp_nonce_field(OrdersHandler::UPDATE_ORDER . $part->orderId); ?>
+                    <?php if ($adminVendorId > 0) : ?><input type="hidden" name="vendor_id" value="<?php echo (int) $adminVendorId; ?>"><?php endif; ?>
                     <label class="ch-field">
                         <span class="ch-field__label"><?php esc_html_e('Seguimiento o datos del motorizado', 'cheppi-sellers'); ?> <small><?php esc_html_e('lo verá el cliente', 'cheppi-sellers'); ?></small></span>
                         <input class="ch-input" name="tracking" maxlength="200" value="<?php echo esc_attr($part->tracking); ?>" placeholder="<?php esc_attr_e('Ej.: Motorizado Luis, 987 654 321, llega 3-5 p. m.', 'cheppi-sellers'); ?>">
@@ -113,7 +116,7 @@ $whatsapp = preg_replace('/\D+/', '', (string) $phone);
         </section>
 
         <section class="ch-card">
-            <h2 class="ch-card__title"><?php esc_html_e('Tu dinero', 'cheppi-sellers'); ?></h2>
+            <h2 class="ch-card__title"><?php echo $adminVendorId > 0 ? esc_html__('Liquidación del vendedor', 'cheppi-sellers') : esc_html__('Tu dinero', 'cheppi-sellers'); ?></h2>
             <dl class="ch-summary ch-summary--money">
                 <dt><?php esc_html_e('Venta', 'cheppi-sellers'); ?></dt><dd><?php echo esc_html($soles($sales)); ?></dd>
                 <dt><?php echo esc_html($bps !== null ? sprintf(__('Comisión Cheppi (%s%%)', 'cheppi-sellers'), Percent::fromBps($bps)) : __('Comisión Cheppi', 'cheppi-sellers')); ?></dt><dd><?php echo esc_html($soles($commission)); ?></dd>

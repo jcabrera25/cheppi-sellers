@@ -17,6 +17,8 @@ use Cheppi\Sellers\Domain\Vendor\StoreCategory;
 use Cheppi\Sellers\Domain\Vendor\VendorStatus;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
 
+use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageContext;
+
 defined('ABSPATH') || exit;
 
 $chip = static fn (VendorStatus $s): string => match ($s) {
@@ -55,13 +57,13 @@ $current = $status?->value ?? '';
     <div class="ch-toolbar">
     <nav class="ch-tabs" aria-label="<?php esc_attr_e('Filtrar por estado', 'cheppi-sellers'); ?>">
         <?php foreach ($tabs as $value => [$label, $count]) : ?>
-            <a class="ch-tab" href="<?php echo esc_url(admin_url('admin.php?page=' . $page . ($value !== '' ? '&estado=' . $value : ''))); ?>" <?php echo $current === $value ? 'aria-current="page"' : ''; ?>>
+            <a class="ch-tab" href="<?php echo esc_url(ManageContext::url($page, $value !== '' ? ['estado' => $value] : [])); ?>" <?php echo $current === $value ? 'aria-current="page"' : ''; ?>>
                 <?php echo esc_html($label); ?> <span><?php echo (int) $count; ?></span>
             </a>
         <?php endforeach; ?>
     </nav>
-    <form method="get" class="ch-search" role="search">
-        <input type="hidden" name="page" value="<?php echo esc_attr($page); ?>">
+    <form method="get" class="ch-search" role="search" action="<?php echo esc_url(strtok(ManageContext::url($page), '?')); ?>">
+        <?php if (!ManageContext::useFront()) : ?><input type="hidden" name="page" value="<?php echo esc_attr($page); ?>"><?php endif; ?>
         <?php if ($current !== '') : ?><input type="hidden" name="estado" value="<?php echo esc_attr($current); ?>"><?php endif; ?>
         <input class="ch-input" type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Buscar tienda, razón social o RUC', 'cheppi-sellers'); ?>" aria-label="<?php esc_attr_e('Buscar vendedores', 'cheppi-sellers'); ?>">
     </form>

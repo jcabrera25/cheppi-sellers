@@ -18,6 +18,17 @@ final class FakeCatalog implements ProductCatalog
         return [15 => 'Maquillaje', 16 => 'Fragancias'];
     }
 
+    public function choices(int $ownerId, ?int $productId): \Cheppi\Sellers\Domain\Catalog\ProductChoices
+    {
+        $own = [];
+        foreach ($this->products as $id => $p) {
+            if ($p['owner'] === $ownerId && $id !== $productId) {
+                $own[$id] = 'Producto ' . $id;
+            }
+        }
+        return new \Cheppi\Sellers\Domain\Catalog\ProductChoices($this->categories(), [40 => 'Lumi Skin'], $own);
+    }
+
     public function countForVendor(int $ownerId): int
     {
         return count(array_filter($this->products, static fn (array $p): bool => $p['owner'] === $ownerId));

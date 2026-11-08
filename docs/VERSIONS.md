@@ -2,6 +2,7 @@
 
 | Versión | Fecha | Fase | Dónde | Notas |
 | --- | --- | --- | --- | --- |
+| 0.8.0 | 2026-11-08 | Editor completo y gestión | cheppimarket.ccrea.pe | Editor de productos con todas las opciones; panel /gestion/ para el equipo Cheppi. |
 | 0.7.0 | 2026-11-07 | 5 · Crecimiento | cheppimarket.ccrea.pe | Campañas, cupones, destacados, métricas, CSV, páginas premium. |
 | 0.6.0 | 2026-11-07 | 4 · Liquidaciones | cheppimarket.ccrea.pe | Cortes, CSV de transferencias, estado de cuenta PDF, pantalla Pagos, auditoría. |
 | 0.5.0 | 2026-11-07 | 3 · Pedidos, comisiones y envíos | cheppimarket.ccrea.pe | Libro contable, pedidos del vendedor, zonas de delivery por marca, carrito dividido, tienda con header Divi. |

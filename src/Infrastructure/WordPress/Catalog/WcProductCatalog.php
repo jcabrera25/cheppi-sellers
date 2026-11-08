@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Cheppi\Sellers\Infrastructure\WordPress\Catalog;
 
 use Cheppi\Sellers\Application\ProductCatalog;
+use Cheppi\Sellers\Domain\Catalog\ProductChoices;
 use Cheppi\Sellers\Domain\Catalog\ProductDraft;
 use Cheppi\Sellers\Domain\Catalog\ProductStatus;
 use Cheppi\Sellers\Domain\Catalog\ProductValidationException;
@@ -38,6 +39,26 @@ final class WcProductCatalog implements ProductCatalog
             unset($this->categories[(int) get_option('default_product_cat')]); // "Sin categorizar"
         }
         return $this->categories;
+    }
+
+    public function choices(int $ownerId, ?int $productId): ProductChoices
+    {
+        $brands = [];
+        if (taxonomy_exists('product_brand')) {
+            $terms = get_terms(['taxonomy' => 'product_brand', 'hide_empty' => false, 'fields' => 'id=>name', 'orderby' => 'name']);
+            $brands = is_array($terms) ? array_map('strval', $terms) : [];
+        }
+        global $wpdb;
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT ID, post_title FROM {$wpdb->posts} WHERE post_type = 'product' AND post_author = %d AND post_status IN ('publish','pending','draft') AND ID <> %d ORDER BY post_title LIMIT 300",
+            $ownerId,
+            (int) $productId
+        ));
+        $linkable = [];
+        foreach ((array) $rows as $row) {
+            $linkable[(int) $row->ID] = (string) $row->post_title;
+        }
+        return new ProductChoices($this->categories(), $brands, $linkable);
     }
 
     public function countForVendor(int $ownerId): int
@@ -85,30 +106,50 @@ final class WcProductCatalog implements ProductCatalog
             // WordPress leaves pending posts without a slug; publishing later must still give a clean URL.
             $product->set_slug(sanitize_title($draft->name));
         }
-        $product->set_description($draft->description);
-        $product->set_category_ids([$draft->categoryId]);
+        $product->set_short_description(self::cleanHtml($draft->shortDescription));
+        $product->set_description(self::cleanHtml($draft->description));
+        $product->set_category_ids($draft->categoryIds);
         $product->set_status($status->value);
         $product->set_catalog_visibility('visible');
+        $product->set_sold_individually($draft->soldIndividually);
+        $product->set_purchase_note(sanitize_textarea_field($draft->purchaseNote));
+        $product->set_upsell_ids($draft->upsellIds);
+        $product->set_cross_sell_ids($draft->crossSellIds);
+        $product->set_weight($draft->shipping['weight'] ?? '');
+        $product->set_length($draft->shipping['length'] ?? '');
+        $product->set_width($draft->shipping['width'] ?? '');
+        $product->set_height($draft->shipping['height'] ?? '');
+        $product->set_low_stock_amount($draft->lowStock ?? '');
+        $product->set_backorders($draft->backorders);
+
+        $attributes = [];
+        foreach ($draft->attributes as $position => $a) {
+            $attribute = new WC_Product_Attribute();
+            $attribute->set_name($a->name);
+            $attribute->set_options($a->options);
+            $attribute->set_position($position);
+            $attribute->set_visible($a->visible);
+            $attribute->set_variation($a->forVariations);
+            $attributes[] = $attribute;
+        }
+        $product->set_attributes($attributes);
 
         try {
+            $product->set_sku($draft->sku);
             if ($draft->isVariable()) {
-                $attribute = new WC_Product_Attribute();
-                $attribute->set_name($draft->attributeName);
-                $attribute->set_options(array_map(static fn ($v): string => $v->option, $draft->variations));
-                $attribute->set_visible(true);
-                $attribute->set_variation(true);
-                $product->set_attributes([$attribute]);
-                $product->set_sku('');
-                $product->set_manage_stock(false);
+                $product->set_manage_stock($draft->manageStock);
+                $product->set_stock_quantity($draft->manageStock ? $draft->stock : null);
+                $product->set_virtual(false);
             } else {
-                $product->set_attributes([]);
+                $product->set_virtual($draft->virtual);
                 $product->set_regular_price((string) $draft->price?->toDecimal());
                 $product->set_sale_price($draft->salePrice?->toDecimal() ?? '');
-                $product->set_sku($draft->sku);
-                $product->set_manage_stock($draft->stock !== null);
-                $product->set_stock_quantity($draft->stock);
-                if ($draft->stock === null) {
-                    $product->set_stock_status('instock');
+                $product->set_date_on_sale_from($draft->saleFrom?->format('Y-m-d 00:00:00') ?? '');
+                $product->set_date_on_sale_to($draft->saleTo?->format('Y-m-d 23:59:59') ?? '');
+                $product->set_manage_stock($draft->manageStock);
+                $product->set_stock_quantity($draft->manageStock ? $draft->stock : null);
+                if (!$draft->manageStock) {
+                    $product->set_stock_status($draft->stockStatus);
                 }
             }
         } catch (WC_Data_Exception $e) {
@@ -120,10 +161,14 @@ final class WcProductCatalog implements ProductCatalog
             wp_update_post(['ID' => $id, 'post_author' => $ownerId]);
         }
 
+        wp_set_object_terms($id, $draft->tags, 'product_tag');
+        if (taxonomy_exists('product_brand')) {
+            wp_set_object_terms($id, $draft->brandIds, 'product_brand');
+        }
+        $this->saveImages($ownerId, $product, $draft->name, $newImages, $removeImageIds);
         if ($draft->isVariable()) {
             $this->saveVariations($product, $draft);
         }
-        $this->saveImages($ownerId, $product, $draft->name, $newImages, $removeImageIds);
         return $id;
     }
 
@@ -153,23 +198,42 @@ final class WcProductCatalog implements ProductCatalog
         return ['items' => $items, 'total' => (int) $query->found_posts];
     }
 
-    /** Values for the edit form. */
+    /** Values for the edit form, with the same keys the form posts. */
     public function formValues(int $ownerId, int $productId): ?array
     {
         $product = $this->owned($ownerId, $productId);
         if ($product === null) {
             return null;
         }
+        $date = static fn ($d): string => $d instanceof \WC_DateTime ? $d->date('Y-m-d') : '';
         $values = [
             'type' => $product->is_type('variable') ? 'variable' : 'simple',
             'name' => $product->get_name('edit'),
-            'description' => wp_strip_all_tags($product->get_description('edit')),
-            'category' => (string) ($product->get_category_ids()[0] ?? ''),
+            'short_description' => $product->get_short_description('edit'),
+            'description' => $product->get_description('edit'),
+            'categories' => array_map('strval', $product->get_category_ids('edit')),
+            'brands' => array_map('strval', taxonomy_exists('product_brand') ? wp_get_object_terms($productId, 'product_brand', ['fields' => 'ids']) : []),
+            'tags' => implode(', ', wp_get_object_terms($productId, 'product_tag', ['fields' => 'names'])),
             'price' => $product->get_regular_price('edit'),
             'sale_price' => $product->get_sale_price('edit'),
+            'sale_from' => $date($product->get_date_on_sale_from('edit')),
+            'sale_to' => $date($product->get_date_on_sale_to('edit')),
             'sku' => $product->get_sku('edit'),
-            'stock' => $product->get_manage_stock() ? (string) $product->get_stock_quantity() : '',
-            'attribute_name' => '',
+            'manage_stock' => $product->get_manage_stock('edit') ? '1' : '',
+            'stock' => $product->get_manage_stock('edit') ? (string) $product->get_stock_quantity('edit') : '',
+            'stock_status' => $product->get_stock_status('edit'),
+            'backorders' => $product->get_backorders('edit'),
+            'low_stock' => (string) $product->get_low_stock_amount('edit'),
+            'sold_individually' => $product->get_sold_individually('edit') ? '1' : '',
+            'virtual' => $product->get_virtual('edit') ? '1' : '',
+            'weight' => $product->get_weight('edit'),
+            'length' => $product->get_length('edit'),
+            'width' => $product->get_width('edit'),
+            'height' => $product->get_height('edit'),
+            'upsells' => array_map('strval', $product->get_upsell_ids('edit')),
+            'cross_sells' => array_map('strval', $product->get_cross_sell_ids('edit')),
+            'purchase_note' => $product->get_purchase_note('edit'),
+            'attributes' => [],
             'variations' => [],
             'status' => $product->get_status(),
             'images' => array_map(static fn (int $id): array => [
@@ -178,26 +242,59 @@ final class WcProductCatalog implements ProductCatalog
             ], $this->imageIds($product)),
             'permalink' => $product->get_permalink(),
         ];
+        $variationKeys = [];
+        foreach ($product->get_attributes('edit') as $attribute) {
+            if (!$attribute instanceof WC_Product_Attribute) {
+                continue;
+            }
+            $names = $attribute->is_taxonomy()
+                ? array_map(static fn ($t): string => $t->name, $attribute->get_terms() ?: [])
+                : $attribute->get_options();
+            $label = $attribute->is_taxonomy() ? wc_attribute_label($attribute->get_name()) : $attribute->get_name();
+            $values['attributes'][] = [
+                'name' => $label,
+                'options' => implode(' | ', $names),
+                'visible' => $attribute->get_visible() ? '1' : '',
+                'variation' => $attribute->get_variation() ? '1' : '',
+            ];
+            if ($attribute->get_variation()) {
+                $variationKeys[] = sanitize_title($attribute->get_name());
+            }
+        }
         if ($product instanceof WC_Product_Variable) {
-            $attribute = array_values($product->get_attributes())[0] ?? null;
-            $values['attribute_name'] = $attribute instanceof WC_Product_Attribute ? $attribute->get_name() : '';
-            $key = sanitize_title($values['attribute_name']);
             foreach ($product->get_children() as $childId) {
                 $variation = wc_get_product($childId);
                 if (!$variation instanceof WC_Product_Variation) {
                     continue;
                 }
+                $chosen = $variation->get_attributes('edit');
                 $values['variations'][] = [
                     'id' => (string) $childId,
-                    'option' => (string) ($variation->get_attributes('edit')[$key] ?? ''),
+                    'attributes' => array_map(static fn (string $key): string => (string) ($chosen[$key] ?? ''), $variationKeys),
+                    'enabled' => $variation->get_status('edit') === 'private' ? '' : '1',
                     'price' => $variation->get_regular_price('edit'),
                     'sale_price' => $variation->get_sale_price('edit'),
                     'sku' => $variation->get_sku('edit'),
-                    'stock' => (string) ($variation->get_stock_quantity() ?? 0),
+                    'manage_stock' => $variation->get_manage_stock('edit') === true ? '1' : '',
+                    'stock' => (string) ($variation->get_stock_quantity('edit') ?? ''),
+                    'stock_status' => $variation->get_stock_status('edit'),
+                    'weight' => $variation->get_weight('edit'),
+                    'image_id' => (string) $variation->get_image_id('edit'),
+                    'description' => $variation->get_description('edit'),
                 ];
             }
         }
         return $values;
+    }
+
+    /** Safe rich text for descriptions: paragraphs, emphasis, lists and links only. */
+    private static function cleanHtml(string $html): string
+    {
+        return trim(wp_kses($html, [
+            'p' => [], 'br' => [], 'strong' => [], 'b' => [], 'em' => [], 'i' => [], 'u' => [],
+            'ul' => [], 'ol' => [], 'li' => [], 'h3' => [], 'h4' => [], 'blockquote' => [],
+            'a' => ['href' => true, 'target' => true, 'rel' => true],
+        ]));
     }
 
     private function owned(int $ownerId, int $productId): ?WC_Product
@@ -222,29 +319,45 @@ final class WcProductCatalog implements ProductCatalog
 
     private function saveVariations(WC_Product_Variable $product, ProductDraft $draft): void
     {
-        $key = sanitize_title($draft->attributeName);
         $existing = array_map('intval', $product->get_children());
+        $images = $this->imageIds(wc_get_product($product->get_id()) ?: $product);
         $kept = [];
+        $default = [];
         foreach ($draft->variations as $menuOrder => $v) {
             $variation = $v->id !== null && in_array($v->id, $existing, true) ? new WC_Product_Variation($v->id) : new WC_Product_Variation();
             $variation->set_parent_id($product->get_id());
-            $variation->set_attributes([$key => $v->option]);
+            $keys = [];
+            foreach ($v->attributes as $name => $option) {
+                $keys[sanitize_title($name)] = $option;
+            }
+            $variation->set_attributes($keys);
+            $variation->set_status($v->enabled ? 'publish' : 'private');
             $variation->set_regular_price($v->price->toDecimal());
             $variation->set_sale_price($v->salePrice?->toDecimal() ?? '');
-            $variation->set_manage_stock(true);
-            $variation->set_stock_quantity($v->stock);
+            $variation->set_manage_stock($v->manageStock);
+            $variation->set_stock_quantity($v->manageStock ? $v->stock : null);
+            if (!$v->manageStock) {
+                $variation->set_stock_status($v->stockStatus);
+            }
+            $variation->set_weight($v->weight ?? '');
+            $variation->set_image_id(in_array($v->imageId, $images, true) ? $v->imageId : 0); // only this product's photos
+            $variation->set_description(sanitize_textarea_field($v->description));
             $variation->set_menu_order($menuOrder);
-            $variation->set_status('publish');
             try {
                 $variation->set_sku($v->sku);
             } catch (WC_Data_Exception $e) {
                 throw new ProductValidationException(["variations.{$menuOrder}.sku" => $e->getMessage()]);
             }
             $kept[] = $variation->save();
+            if ($default === [] && $v->enabled) {
+                $default = $keys;
+            }
         }
         foreach (array_diff($existing, $kept) as $orphan) {
             wp_delete_post($orphan, true);
         }
+        $product->set_default_attributes($default);
+        $product->save();
         WC_Product_Variable::sync($product->get_id());
     }
 

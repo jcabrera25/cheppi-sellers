@@ -70,9 +70,9 @@ final class PromotionTest extends TestCase
         $this->assertSame(2, count($sheet['rows']));
         $this->assertSame(4, $sheet['rows'][1]['line']);
         $input = ProductSheet::toInput($sheet['rows'][0]['data'], [18 => 'Labios', 31 => 'Cuidado de la piel']);
-        $this->assertSame('18', $input['category']);
+        $this->assertSame(['18'], $input['categories']);
         $this->assertSame('29.90', $input['price']);
-        $this->assertSame('31', ProductSheet::toInput($sheet['rows'][1]['data'], [18 => 'Labios', 31 => 'Cuidado de la piel'])['category']);
+        $this->assertSame('31', ProductSheet::toInput($sheet['rows'][1]['data'], [18 => 'Labios', 31 => 'Cuidado de la piel'])['categories'][0]);
         $this->assertSame('https://example.com/a.jpg', $sheet['rows'][0]['data']['image_url']);
 
         $bad = ProductSheet::parse("sku,descripcion\nA,b\n");

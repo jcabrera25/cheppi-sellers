@@ -245,16 +245,14 @@ final class PanelController
             Flash::set(['type' => 'error', 'message' => __('Producto no encontrado.', 'cheppi-sellers')]);
             $this->redirect(Routes::productsUrl());
         }
-        $values = is_array($flash['values'] ?? null) ? $flash['values'] + ($stored ?? []) : ($stored ?? ['type' => 'simple', 'variations' => []]);
-
-        $this->renderPage('product-form', $productId > 0 ? __('Editar producto', 'cheppi-sellers') : __('Nuevo producto', 'cheppi-sellers'), $base + [
-            'productId' => $productId,
-            'values' => $values,
-            'images' => $stored['images'] ?? [],
-            'errors' => is_array($flash['errors'] ?? null) ? $flash['errors'] : [],
-            'categories' => $this->catalog->categories(),
-            'moderated' => $this->rules->current()->moderateNewProducts,
-        ], 'productos');
+        $this->renderPage('product-form', $productId > 0 ? __('Editar producto', 'cheppi-sellers') : __('Nuevo producto', 'cheppi-sellers'), $base + self::productFormVars(
+            $this->catalog,
+            $vendor->userId,
+            $productId,
+            $stored,
+            $flash,
+            $this->rules->current()->moderateNewProducts
+        ) + ['backUrl' => Routes::productsUrl(), 'ownerId' => 0, 'ownerName' => ''], 'productos');
     }
 
     /** List or grid; the choice is kept in a cookie so the page renders right without JavaScript. */
@@ -313,6 +311,26 @@ final class PanelController
         nocache_headers();
         header('X-LiteSpeed-Cache-Control: no-cache');
         header('X-Robots-Tag: noindex, nofollow');
+    }
+
+    /**
+     * Variables of the product editor, shared by the seller panel and the management panel.
+     *
+     * @param array<string, mixed>|null $stored
+     * @param array<string, mixed>      $flash
+     * @return array<string, mixed>
+     */
+    public static function productFormVars(WcProductCatalog $catalog, int $ownerId, int $productId, ?array $stored, array $flash, bool $moderated): array
+    {
+        $defaults = ['type' => 'simple', 'manage_stock' => '1', 'stock_status' => 'instock', 'attributes' => [], 'variations' => []];
+        return [
+            'productId' => $productId,
+            'values' => is_array($flash['values'] ?? null) ? $flash['values'] + ($stored ?? []) : ($stored ?? $defaults),
+            'images' => $stored['images'] ?? [],
+            'errors' => is_array($flash['errors'] ?? null) ? $flash['errors'] : [],
+            'choices' => $catalog->choices($ownerId, $productId > 0 ? $productId : null),
+            'moderated' => $moderated,
+        ];
     }
 
     public static function initials(WP_User $user, ?Vendor $vendor = null): string

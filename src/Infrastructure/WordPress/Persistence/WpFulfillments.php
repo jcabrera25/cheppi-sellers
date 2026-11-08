@@ -89,6 +89,32 @@ final class WpFulfillments implements Fulfillments
         return $counts;
     }
 
+    public function listAll(?FulfillmentStatus $status, int $limit, int $offset): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['fulfillments'];
+        $sql = "SELECT * FROM {$table}";
+        $args = [];
+        if ($status !== null) {
+            $sql .= ' WHERE status = %s';
+            $args[] = $status->value;
+        }
+        $sql .= ' ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d';
+        array_push($args, $limit, $offset);
+        return array_map([self::class, 'hydrate'], (array) $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A));
+    }
+
+    public function countsAll(): array
+    {
+        global $wpdb;
+        $table = Installer::tables()['fulfillments'];
+        $counts = [];
+        foreach ((array) $wpdb->get_results("SELECT status, COUNT(*) AS n FROM {$table} GROUP BY status", ARRAY_A) as $row) {
+            $counts[(string) $row['status']] = (int) $row['n'];
+        }
+        return $counts;
+    }
+
     /** @param array<string, string> $row */
     private static function hydrate(array $row): Fulfillment
     {

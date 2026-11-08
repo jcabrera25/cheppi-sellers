@@ -41,4 +41,18 @@ final class FakeFulfillments implements Fulfillments
         }
         return $counts;
     }
+
+    public function listAll(?FulfillmentStatus $status, int $limit, int $offset): array
+    {
+        return array_slice(array_values(array_filter($this->items, static fn (Fulfillment $f): bool => $status === null || $f->status === $status)), $offset, $limit);
+    }
+
+    public function countsAll(): array
+    {
+        $counts = [];
+        foreach ($this->items as $f) {
+            $counts[$f->status->value] = ($counts[$f->status->value] ?? 0) + 1;
+        }
+        return $counts;
+    }
 }

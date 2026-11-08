@@ -457,3 +457,60 @@ body.ch-app {
   .ch-campaign { grid-template-columns: minmax(0, 1fr); }
   .ch-nav { overflow-x: auto; grid-auto-columns: minmax(68px, 1fr); scrollbar-width: none; }
 }
+
+/* Product form: full options */
+.ch-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ch-check--field { align-self: end; min-height: 46px; }
+.ch-more > summary { cursor: pointer; font-weight: 600; color: var(--ch-violet-700); font-size: 0.9rem; }
+.ch-more[open] > summary { margin-bottom: var(--ch-space-3); }
+.ch-checklist { display: grid; gap: 6px; max-height: 240px; overflow: auto; padding-right: 4px; }
+.ch-attr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; padding: 12px; border: 1px solid var(--ch-border); border-radius: var(--ch-radius-sm); }
+.ch-attr__flags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 0.88rem; }
+.ch-attr__flags .ch-icon-btn { margin-left: auto; }
+.ch-attr .ch-field__error { grid-column: 1 / -1; }
+.ch-bulk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; }
+.ch-variation { border: 1px solid var(--ch-border); border-radius: var(--ch-radius-sm); background: var(--ch-surface); }
+.ch-variation > summary { list-style: none; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; }
+.ch-variation > summary::-webkit-details-marker { display: none; }
+.ch-variation[open] > summary { border-bottom: 1px solid var(--ch-border); }
+.ch-variation__combo { display: flex; flex-wrap: wrap; gap: 6px; }
+.ch-variation__combo select { width: auto; min-width: 120px; min-height: 38px; padding-block: 6px; }
+.ch-variation__combo[aria-invalid='true'] select { border-color: var(--ch-danger); }
+.ch-variation__price { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ch-variation__body { display: grid; gap: 12px; padding: 12px; }
+.ch-rte { display: grid; border: 1px solid var(--ch-border); border-radius: var(--ch-radius-sm); overflow: hidden; }
+.ch-rte__bar { display: flex; gap: 2px; padding: 4px; background: var(--ch-bg); border-bottom: 1px solid var(--ch-border); }
+.ch-rte__btn { min-width: 34px; height: 32px; border: 0; border-radius: 8px; background: transparent; font: 700 0.9rem var(--ch-font-body); color: var(--ch-text); cursor: pointer; }
+.ch-rte__btn:hover { background: var(--ch-surface); color: var(--ch-violet-700); }
+.ch-rte__area { border: 0 !important; border-radius: 0 !important; overflow: auto; max-height: 420px; line-height: 1.55; }
+.ch-rte__area:focus { outline: 2px solid var(--ch-violet); outline-offset: -2px; }
+.ch-rte__area p, .ch-rte__area ul, .ch-rte__area ol { margin: 0 0 0.6em; }
+.ch-rte__area[aria-invalid='true'] { box-shadow: inset 0 0 0 2px var(--ch-danger); }
+select[multiple].ch-input { min-height: 120px; padding: 6px; }
+@media (max-width: 760px) {
+  .ch-row--3, .ch-attr, .ch-bulk { grid-template-columns: minmax(0, 1fr); }
+  .ch-variation > summary { grid-template-columns: minmax(0, 1fr) auto; }
+  .ch-variation__price { grid-column: 1; }
+}
+
+/* Management panel (/gestion/): wp-admin screens rendered inside the panel shell */
+.ch-manage .wrap { margin: 0; }
+.ch-manage .ch-admin__head h1 { display: none; }
+.ch-manage .ch-admin__head { margin-bottom: var(--ch-space-4); }
+.ch-manage .notice { display: flex; gap: 10px; align-items: center; margin: 0 0 var(--ch-space-4); padding: 12px 16px; border-radius: var(--ch-radius); border: 0; background: var(--ch-violet-100); color: var(--ch-text); }
+.ch-manage .notice p { margin: 0; }
+.ch-manage .notice-success { background: #e9f9e7; }
+.ch-manage .notice-error { background: var(--ch-danger-bg); color: var(--ch-danger); }
+.ch-manage__todo { margin-bottom: var(--ch-space-6); }
+.ch-manage .ch-toolbar { flex-wrap: wrap; gap: 12px; }
+.ch-manage-products__thumb { width: 56px; }
+.ch-manage-products__thumb img { width: 48px; height: 48px; object-fit: cover; border-radius: 10px; display: block; }
+.ch-manage-products__actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.ch-popover { position: relative; }
+.ch-popover > summary { list-style: none; }
+.ch-popover > summary::-webkit-details-marker { display: none; }
+.ch-popover__body { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 280px; display: grid; gap: 8px; padding: 12px; background: var(--ch-surface); border: 1px solid var(--ch-border); border-radius: var(--ch-radius); box-shadow: var(--ch-shadow); }
+.ch-manage-order { margin-bottom: var(--ch-space-5); }
+.ch-manage-order__vendor { font: 800 1.25rem var(--ch-font-display); margin: var(--ch-space-6) 0 var(--ch-space-3); }
+.ch-manage-order__vendor a { color: var(--ch-text) !important; text-decoration: none; }
+.ch-order--manage { grid-template-columns: auto minmax(0, 1fr) auto auto; }

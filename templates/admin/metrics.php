@@ -14,6 +14,8 @@
 use Cheppi\Sellers\Domain\Order\FulfillmentStatus;
 use Cheppi\Sellers\Infrastructure\WordPress\Admin\VendorsPage;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Charts;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageContext;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
 
 defined('ABSPATH') || exit;
 
@@ -53,7 +55,7 @@ $maxTop = max(1, ...array_map(static fn (array $r): int => $r['sales'], $top ?: 
         <?php if ($late === []) : ?><p class="ch-muted"><?php esc_html_e('Todo al día.', 'cheppi-sellers'); ?></p><?php else : ?>
             <table class="ch-table-clean"><thead><tr><th><?php esc_html_e('Pedido', 'cheppi-sellers'); ?></th><th><?php esc_html_e('Vendedor', 'cheppi-sellers'); ?></th><th><?php esc_html_e('Estado', 'cheppi-sellers'); ?></th><th><?php esc_html_e('Desde', 'cheppi-sellers'); ?></th></tr></thead><tbody>
             <?php foreach ($late as $row) : ?>
-                <tr><td><a href="<?php echo esc_url(admin_url('admin.php?page=wc-orders&action=edit&id=' . $row['order_id'])); ?>">#<?php echo (int) $row['order_id']; ?></a></td><td><?php echo esc_html($names[$row['vendor_id']] ?? ''); ?></td><td><?php echo esc_html(FulfillmentStatus::tryFrom($row['status'])?->label() ?? $row['status']); ?></td><td><?php echo esc_html(wp_date('d/m H:i', strtotime($row['created_at'] . ' UTC'))); ?></td></tr>
+                <tr><td><a href="<?php echo esc_url(ManageContext::useFront() ? Routes::manageOrderUrl($row['order_id']) : admin_url('admin.php?page=wc-orders&action=edit&id=' . $row['order_id'])); ?>">#<?php echo (int) $row['order_id']; ?></a></td><td><?php echo esc_html($names[$row['vendor_id']] ?? ''); ?></td><td><?php echo esc_html(FulfillmentStatus::tryFrom($row['status'])?->label() ?? $row['status']); ?></td><td><?php echo esc_html(wp_date('d/m H:i', strtotime($row['created_at'] . ' UTC'))); ?></td></tr>
             <?php endforeach; ?>
             </tbody></table>
         <?php endif; ?>

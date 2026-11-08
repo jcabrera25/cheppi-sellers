@@ -35,6 +35,7 @@ use Cheppi\Sellers\Infrastructure\WordPress\Catalog\VendorStats;
 use Cheppi\Sellers\Infrastructure\WordPress\Catalog\WcProductCatalog;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\ApplicationHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelController;
+use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageController;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\OrdersHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\PanelHandler;
 use Cheppi\Sellers\Infrastructure\WordPress\Front\Routes;
@@ -178,24 +179,53 @@ final class Plugin
 
         (new Shortcodes($this->rules, $this->assets))->register();
 
+        // Management screens: built once, rendered in the /gestion/ panel and (fallback) in wp-admin.
+        $rulesPage = new BusinessRulesPage($this->rules, $this->assets);
+        $vendorsPage = new VendorsPage(
+            $this->vendors,
+            $this->documents,
+            $this->rules,
+            new ReviewVendor($this->vendors, $this->rules, $this->notifier),
+            new CreateVendorByAdmin($this->vendors, $this->documents, $this->rules),
+            new UpdateVendorProfile($this->vendors),
+            new DeleteVendor($this->vendors, $this->documents, new WpVendorActivity()),
+            $this->assets
+        );
+        $payoutsPage = new PayoutsPage($this->assets, $payouts, $this->vendors, $extras, $generatePayouts, new SettlePayout($this->ledger, $payouts), $this->rules, $this->notifier);
+        $campaignsPage = new CampaignsPage($this->assets, $campaigns);
+        $metricsPage = new MetricsPage($this->assets, $stats, $this->vendors, $this->rules);
+
         if (is_admin()) {
-            (new BusinessRulesPage($this->rules, $this->assets))->register();
-            (new VendorsPage(
-                $this->vendors,
-                $this->documents,
-                $this->rules,
-                new ReviewVendor($this->vendors, $this->rules, $this->notifier),
-                new CreateVendorByAdmin($this->vendors, $this->documents, $this->rules),
-                new UpdateVendorProfile($this->vendors),
-                new DeleteVendor($this->vendors, $this->documents, new WpVendorActivity()),
-                $this->assets
-            ))->register();
-            (new ProductModeration($this->vendors))->register();
+            $rulesPage->register();
+            $vendorsPage->register();
+            (new ProductModeration($this->vendors, $this->notifier))->register();
             (new OrderVendorsBox($this->fulfillments, $this->ledger, $this->vendors))->register();
-            (new PayoutsPage($this->assets, $payouts, $this->vendors, $extras, $generatePayouts, new SettlePayout($this->ledger, $payouts), $this->rules, $this->notifier))->register();
-            (new CampaignsPage($this->assets, $campaigns))->register();
-            (new MetricsPage($this->assets, $stats, $this->vendors, $this->rules))->register();
+            $payoutsPage->register();
+            $campaignsPage->register();
+            $metricsPage->register();
+        } else {
+            (new ManageController(
+                $this->vendors,
+                $catalog,
+                $this->fulfillments,
+                $this->ledger,
+                $payouts,
+                $this->rules,
+                $this->assets,
+                $vendorsPage,
+                $payoutsPage,
+                $campaignsPage,
+                $rulesPage,
+                $metricsPage
+            ))->register();
         }
+
+        // Admins land on the management panel from the admin bar.
+        add_action('admin_bar_menu', static function (\WP_Admin_Bar $bar): void {
+            if (current_user_can(Capabilities::MANAGE)) {
+                $bar->add_node(['id' => 'cheppi-manage', 'title' => __('Gestión Cheppi', 'cheppi-sellers'), 'href' => Routes::manageUrl()]);
+            }
+        }, 80);
 
         add_action('rest_api_init', function (): void {
             (new RulesController($this->rules))->register();

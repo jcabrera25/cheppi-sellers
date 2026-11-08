@@ -14,6 +14,9 @@ interface ProductCatalog
     /** @return array<int, string> term id => name */
     public function categories(): array;
 
+    /** Categories, brands and the owner's other products a product may point to. */
+    public function choices(int $ownerId, ?int $productId): \Cheppi\Sellers\Domain\Catalog\ProductChoices;
+
     /** Products that count against the plan limit (everything except trash). */
     public function countForVendor(int $ownerId): int;
 

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Cheppi\Sellers\Infrastructure\WordPress\Admin;
 
+use Cheppi\Sellers\Infrastructure\WordPress\Front\ManageContext;
+
 use Cheppi\Sellers\Application\BusinessRulesRepository;
 use Cheppi\Sellers\Application\CreateVendorByAdmin;
 use Cheppi\Sellers\Application\DeleteVendor;
@@ -56,17 +58,17 @@ final class VendorsPage
 
     public static function detailUrl(int $vendorId): string
     {
-        return admin_url('admin.php?page=' . self::SLUG . '&vendor=' . $vendorId);
+        return ManageContext::url(self::SLUG, ['vendor' => $vendorId]);
     }
 
     public static function listUrl(): string
     {
-        return admin_url('admin.php?page=' . self::SLUG);
+        return ManageContext::url(self::SLUG);
     }
 
     public static function newUrl(): string
     {
-        return admin_url('admin.php?page=' . self::SLUG . '&nuevo=1');
+        return ManageContext::url(self::SLUG, ['nuevo' => 1]);
     }
 
     public function register(): void

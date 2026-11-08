@@ -18,6 +18,7 @@ namespace Cheppi\Sellers\Infrastructure\WordPress\Front;
  *   /vendedor/promociones/          coupons, campaigns, featured products
  *   /vendedor/metricas/             sales and fulfilment metrics
  *   /vendedor/productos/importar/   CSV import/export
+ *   /gestion/<section>/<id>/        Cheppi management panel (admins)
  *   /marca/<slug>/                  premium brand page (a WordPress page designed by Cheppi)
  *   /tienda/                        store directory (WordPress page "Tiendas")
  *   /tienda/<slug>/                 public store page
@@ -30,6 +31,8 @@ final class Routes
     public const BASE = 'vendedor';
     public const STORE_BASE = 'tienda';
     public const BRAND_BASE = 'marca';
+    public const MANAGE_BASE = 'gestion';
+    public const MANAGE_VAR = 'cheppi_manage';
     public const BRAND_VAR = 'cheppi_brand';
 
     public static function register(): void
@@ -48,6 +51,11 @@ final class Routes
         add_rewrite_rule('^' . self::BASE . '/promociones/?$', $panel . 'promociones', 'top');
         add_rewrite_rule('^' . self::BASE . '/metricas/?$', $panel . 'metricas', 'top');
         add_rewrite_rule('^' . self::BASE . '/productos/importar/?$', $panel . 'importar', 'top');
+        // Cheppi management panel (admins): /gestion/<section>/<id>/
+        $manage = 'index.php?' . self::MANAGE_VAR . '=';
+        add_rewrite_rule('^' . self::MANAGE_BASE . '/?$', $manage . 'inicio', 'top');
+        add_rewrite_rule('^' . self::MANAGE_BASE . '/([a-z-]+)/?$', $manage . '$matches[1]', 'top');
+        add_rewrite_rule('^' . self::MANAGE_BASE . '/([a-z-]+)/([0-9]+|nueva|nuevo)/?$', $manage . '$matches[1]&' . self::ID_VAR . '=$matches[2]', 'top');
         add_rewrite_rule('^' . self::BRAND_BASE . '/([a-z0-9-]+)/?$', 'index.php?' . self::BRAND_VAR . '=$matches[1]', 'top');
         // Store URLs resolve to the "Tiendas" page so themes render them like any page.
         $storePage = StorePage::id();
@@ -58,7 +66,7 @@ final class Routes
         );
 
         add_filter('query_vars', static function (array $vars): array {
-            array_push($vars, self::QUERY_VAR, self::ID_VAR, self::STORE_VAR, self::BRAND_VAR);
+            array_push($vars, self::QUERY_VAR, self::ID_VAR, self::STORE_VAR, self::BRAND_VAR, self::MANAGE_VAR);
             return $vars;
         });
 
@@ -127,6 +135,22 @@ final class Routes
     public static function importUrl(): string
     {
         return self::panelUrl('productos/importar');
+    }
+
+    public static function manageUrl(string $path = ''): string
+    {
+        $path = trim($path, '/');
+        return home_url('/' . self::MANAGE_BASE . '/' . ($path !== '' ? $path . '/' : ''));
+    }
+
+    public static function manageProductUrl(int $productId): string
+    {
+        return self::manageUrl('productos/' . ($productId > 0 ? $productId : 'nuevo'));
+    }
+
+    public static function manageOrderUrl(int $orderId): string
+    {
+        return self::manageUrl('pedidos/' . $orderId);
     }
 
     public static function brandUrl(string $slug): string

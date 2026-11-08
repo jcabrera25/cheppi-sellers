@@ -44,55 +44,93 @@ final class PanelHandler
         $productId = absint($_POST['product_id'] ?? 0);
         check_admin_referer(self::SAVE_PRODUCT . $productId);
         $post = wp_unslash($_POST);
+        [$ownerId, $asAdmin] = self::owner($post);
 
-        $input = [
-            'type' => sanitize_key((string) ($post['type'] ?? 'simple')),
-            'name' => sanitize_text_field((string) ($post['name'] ?? '')),
-            'description' => sanitize_textarea_field((string) ($post['description'] ?? '')),
-            'category' => absint($post['category'] ?? 0),
-            'price' => sanitize_text_field((string) ($post['price'] ?? '')),
-            'sale_price' => sanitize_text_field((string) ($post['sale_price'] ?? '')),
-            'sku' => sanitize_text_field((string) ($post['sku'] ?? '')),
-            'stock' => sanitize_text_field((string) ($post['stock'] ?? '')),
-            'attribute_name' => sanitize_text_field((string) ($post['attribute_name'] ?? '')),
-            'variations' => [],
-        ];
-        foreach ((array) ($post['variations'] ?? []) as $row) {
-            if (is_array($row)) {
-                $input['variations'][] = array_map(static fn ($v): string => sanitize_text_field((string) $v), array_intersect_key(
-                    $row,
-                    array_flip(['id', 'option', 'price', 'sale_price', 'sku', 'stock'])
-                ));
-            }
-        }
+        $input = self::productInput($post);
         $remove = array_values(array_filter(array_map('absint', (array) ($post['remove_images'] ?? []))));
         $draft = ($post['intent'] ?? '') === 'draft';
+        $editUrl = static fn (int $id): string => $asAdmin ? Routes::manageProductUrl($id) : Routes::productUrl($id);
 
         try {
-            $result = ($this->saveProduct)(get_current_user_id(), $productId ?: null, $input, self::images(), $remove, $draft);
+            $result = ($this->saveProduct)($ownerId, $productId ?: null, $input, self::images(), $remove, $draft, $asAdmin);
         } catch (ProductValidationException $e) {
             Flash::set(['type' => 'error', 'message' => $e->errors['form'] ?? __('No se guardó: revisa los campos marcados.', 'cheppi-sellers'), 'errors' => $e->errors, 'values' => $input]);
-            $this->back(Routes::productUrl($productId));
+            $this->back($productId > 0 ? $editUrl($productId) : ($asAdmin ? Routes::manageUrl('productos') : Routes::productUrl(0)));
         }
 
         $message = match ($result['status']) {
             ProductStatus::Draft => __('Guardado como borrador.', 'cheppi-sellers'),
             ProductStatus::Pending => __('Enviado a revisión. Te avisaremos cuando esté publicado.', 'cheppi-sellers'),
-            ProductStatus::Published => __('Producto publicado.', 'cheppi-sellers'),
+            ProductStatus::Published => __('Producto guardado y publicado.', 'cheppi-sellers'),
         };
         Flash::set(['type' => 'success', 'message' => $message]);
-        $this->back(Routes::productUrl($result['id']));
+        $this->back($editUrl($result['id']));
+    }
+
+    /**
+     * Product form → use-case input. Plain fields are sanitized here; descriptions keep simple HTML
+     * (the catalog strips everything but paragraphs, emphasis, lists and links).
+     *
+     * @param array<string, mixed> $post
+     * @return array<string, mixed>
+     */
+    public static function productInput(array $post): array
+    {
+        $text = static fn (string $k): string => sanitize_text_field((string) ($post[$k] ?? ''));
+        $input = [];
+        foreach (['type', 'name', 'price', 'sale_price', 'sale_from', 'sale_to', 'sku', 'manage_stock', 'stock', 'stock_status', 'backorders', 'low_stock', 'sold_individually', 'virtual', 'weight', 'length', 'width', 'height', 'tags'] as $key) {
+            $input[$key] = $text($key);
+        }
+        $input['short_description'] = wp_kses_post((string) ($post['short_description'] ?? ''));
+        $input['description'] = wp_kses_post((string) ($post['description'] ?? ''));
+        $input['purchase_note'] = sanitize_textarea_field((string) ($post['purchase_note'] ?? ''));
+        foreach (['categories', 'brands', 'upsells', 'cross_sells'] as $key) {
+            $input[$key] = array_values(array_map('strval', array_filter(array_map('absint', (array) ($post[$key] ?? [])))));
+        }
+        $input['attributes'] = [];
+        foreach ((array) ($post['attributes'] ?? []) as $row) {
+            if (is_array($row)) {
+                $input['attributes'][] = array_map(static fn ($v): string => sanitize_text_field((string) $v), array_intersect_key($row, array_flip(['name', 'options', 'visible', 'variation'])));
+            }
+        }
+        $input['variations'] = [];
+        foreach ((array) ($post['variations'] ?? []) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $clean = array_map(static fn ($v): string => sanitize_text_field((string) $v), array_intersect_key($row, array_flip(['id', 'enabled', 'price', 'sale_price', 'sku', 'manage_stock', 'stock', 'stock_status', 'weight', 'image_id', 'description'])));
+            $clean['attributes'] = array_values(array_map(static fn ($v): string => sanitize_text_field((string) $v), (array) ($row['attributes'] ?? [])));
+            $input['variations'][] = $clean;
+        }
+        return $input;
+    }
+
+    /**
+     * Whose product this is: the signed-in vendor, or — for a Cheppi admin editing from the management
+     * panel — the vendor that owns it.
+     *
+     * @param array<string, mixed> $post
+     * @return array{0: int, 1: bool}
+     */
+    private static function owner(array $post): array
+    {
+        $ownerId = absint($post['owner_id'] ?? 0);
+        if ($ownerId > 0 && current_user_can(\Cheppi\Sellers\Infrastructure\WordPress\Capabilities::MANAGE)) {
+            return [$ownerId, true];
+        }
+        return [get_current_user_id(), false];
     }
 
     public function deleteProduct(): void
     {
         $productId = absint($_POST['product_id'] ?? 0);
         check_admin_referer(self::DELETE_PRODUCT . $productId);
-        $ok = $this->catalog->trash(get_current_user_id(), $productId);
+        [$ownerId, $asAdmin] = self::owner(wp_unslash($_POST));
+        $ok = $this->catalog->trash($ownerId, $productId);
         Flash::set($ok
-            ? ['type' => 'success', 'message' => __('Producto eliminado. Si fue un error, escríbenos para recuperarlo.', 'cheppi-sellers')]
+            ? ['type' => 'success', 'message' => __('Producto eliminado (está en la papelera de WooCommerce).', 'cheppi-sellers')]
             : ['type' => 'error', 'message' => __('Producto no encontrado.', 'cheppi-sellers')]);
-        $this->back(Routes::productsUrl());
+        $this->back($asAdmin ? Routes::manageUrl('productos') : Routes::productsUrl());
     }
 
     public function saveStore(): void

@@ -6,7 +6,6 @@
  */
 import './panel.css';
 import { isValidRuc } from './ruc';
-import { enhanceProductForm } from './product-form';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -223,7 +222,8 @@ enhanceFileInputs(document);
 const registerForm = document.querySelector<HTMLFormElement>('[data-register-form]');
 if (registerForm) enhanceRegisterForm(registerForm);
 const productForm = document.querySelector<HTMLFormElement>('[data-product-form]');
-if (productForm) enhanceProductForm(productForm);
+// The product editor is the heaviest screen: load its code only there.
+if (productForm) void import('./product-form').then((m) => m.enhanceProductForm(productForm));
 
 // Forms that ask before running (delete product).
 document.querySelectorAll<HTMLFormElement>('form[data-confirm]').forEach((form) => {

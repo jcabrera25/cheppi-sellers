@@ -12,10 +12,18 @@ use WP_Post;
  */
 final class ProductModeration
 {
-    private const ACTION = 'cheppi_approve_product';
+    public const ACTION = 'cheppi_approve_product';
+    public const ACTION_REJECT = 'cheppi_reject_product';
 
-    public function __construct(private readonly WpVendorRepository $vendors)
+    public function __construct(
+        private readonly WpVendorRepository $vendors,
+        private readonly ?\Cheppi\Sellers\Infrastructure\WordPress\Mail\WpMailNotifier $mailer = null
+    ) {
+    }
+
+    public static function approveUrl(int $productId): string
     {
+        return wp_nonce_url(admin_url('admin-post.php?action=' . self::ACTION . '&product=' . $productId), self::ACTION . $productId);
     }
 
     public function register(): void
@@ -25,6 +33,7 @@ final class ProductModeration
         add_filter('the_posts', [$this, 'preloadVendors'], 10, 2);
         add_filter('post_row_actions', [$this, 'rowActions'], 10, 2);
         add_action('admin_post_' . self::ACTION, [$this, 'approve']);
+        add_action('admin_post_' . self::ACTION_REJECT, [$this, 'reject']);
         add_action('admin_head-edit.php', [$this, 'columnStyles']);
     }
 
@@ -90,7 +99,7 @@ final class ProductModeration
         if ($this->vendors->findByUserIds([(int) $post->post_author]) === []) {
             return $actions;
         }
-        $url = wp_nonce_url(admin_url('admin-post.php?action=' . self::ACTION . '&product=' . $post->ID), self::ACTION . $post->ID);
+        $url = self::approveUrl($post->ID);
         return ['cheppi_approve' => sprintf('<a href="%s" style="font-weight:600">%s</a>', esc_url($url), esc_html__('Aprobar y publicar', 'cheppi-sellers'))] + $actions;
     }
 
@@ -104,7 +113,27 @@ final class ProductModeration
             // wp_update_post (not wp_publish_post) so WordPress gives the product its URL slug.
             wp_update_post(['ID' => $productId, 'post_status' => 'publish']);
         }
-        wp_safe_redirect(admin_url('edit.php?post_type=product&post_status=pending'));
+        wp_safe_redirect(wp_get_referer() ?: admin_url('edit.php?post_type=product&post_status=pending'));
+        exit;
+    }
+
+    /** Sends a product back to the vendor as a draft, with the reason by e-mail. */
+    public function reject(): void
+    {
+        $productId = absint($_POST['product'] ?? 0);
+        if (!current_user_can(Capabilities::MANAGE) || !wp_verify_nonce((string) ($_POST['_wpnonce'] ?? ''), self::ACTION_REJECT . $productId)) {
+            wp_die(esc_html__('No tienes permiso para hacer esto.', 'cheppi-sellers'), 403);
+        }
+        $reason = sanitize_textarea_field(wp_unslash((string) ($_POST['reason'] ?? '')));
+        $post = get_post($productId);
+        if ($post && $post->post_type === 'product' && in_array($post->post_status, ['pending', 'publish'], true)) {
+            wp_update_post(['ID' => $productId, 'post_status' => 'draft']);
+            $vendor = $this->vendors->findByUserId((int) $post->post_author);
+            if ($vendor !== null && $this->mailer !== null) {
+                $this->mailer->productNeedsChanges($vendor, $post->post_title, $reason, \Cheppi\Sellers\Infrastructure\WordPress\Front\Routes::productUrl($productId));
+            }
+        }
+        wp_safe_redirect(wp_get_referer() ?: admin_url('edit.php?post_type=product'));
         exit;
     }
 }

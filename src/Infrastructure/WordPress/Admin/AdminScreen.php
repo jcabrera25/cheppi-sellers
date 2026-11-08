@@ -48,7 +48,7 @@ abstract class AdminScreen
 
     protected function url(array $args = []): string
     {
-        return add_query_arg($args, admin_url('admin.php?page=' . $this->slug()));
+        return \Cheppi\Sellers\Infrastructure\WordPress\Front\ManageContext::url($this->slug(), $args);
     }
 
     protected function authorize(string $nonceAction = ''): void
